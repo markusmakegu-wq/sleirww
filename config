@@ -1,0 +1,15 @@
+-- Инициализация настроек по умолчанию
+_G.Config = _G.Config or {
+    Aimbot = false,
+    AimKey = Enum.KeyCode.X,
+    -- ... все остальные настройки
+}
+
+-- Функции для сохранения/загрузки конфигов (с использованием writefile/readfile)
+function SaveConfig(name)
+    -- ... код из основного скрипта
+end
+
+function LoadConfig(name)
+    -- ... код из основного скрипта
+end
