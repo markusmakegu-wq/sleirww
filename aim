@@ -1,0 +1,31 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
+
+local aimLastCall = 0
+local AIM_COOLDOWN = 0.03
+
+local function IsKeyDown(key)
+    -- ... функция проверки нажатия
+end
+
+local function GetClosestTarget()
+    -- ... логика поиска цели с Raycast (использует _G.Config)
+end
+
+local function DoAim()
+    if not _G.Config.Aimbot then return end
+    -- ... вызов GetClosestTarget и mousemoverel
+end
+
+-- Подключаем к RenderStepped
+RunService.RenderStepped:Connect(function()
+    DoAim()
+end)
+
+-- Обработка показа FOV круга (если нужно)
+if _G.Config.ShowFov then
+    -- ... код создания и обновления FOV круга
+end
