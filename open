@@ -1,14 +1,3 @@
---[[
-    ФИНАЛЬНЫЙ ПОЛНЫЙ СКРИПТ
-    - ESP (игроки) обновляется каждый кадр
-    - Новый Weapon Name ESP (Quad + Billboard) уже встроен
-    - Полный SkinChanger (все категории)
-    - Silent Aim с Miss Chance (1 из 3 пуль в тело)
-    - Third Person с вращением мыши
-    - Anti Aim
-    - Все остальные функции
-]]
-
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BlackBox"
 screenGui.Parent = game:GetService("CoreGui")
