@@ -1,222 +1,2417 @@
 --[[
-	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+    ФИНАЛЬНЫЙ ПОЛНЫЙ СКРИПТ
+    - ESP (игроки) обновляется каждый кадр
+    - Новый Weapon Name ESP (Quad + Billboard) уже встроен
+    - Полный SkinChanger (все категории)
+    - Silent Aim с Miss Chance (1 из 3 пуль в тело)
+    - Third Person с вращением мыши
+    - Anti Aim
+    - Все остальные функции
 ]]
--- Discord: https://discord.gg/eTHyrcqXcA
--- Combined script: Silent Aim + ESP (logic unchanged)
 
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BlackBox"
+screenGui.Parent = game:GetService("CoreGui")
 
--- Silent Aim Settings
-local CombatSettings = {
-    ShowFOV = true,
-    Color = Color3.fromRGB(255, 255, 255),
-    aimFOV = 300,
-    targetPart = "Head",
-    SilentEnabled = true,
-    HitChance = 100,
-    VisibleCheck = false
-}
+local executionCount = 0
+pcall(function()
+    if isfile("fent_executions.txt") then
+        executionCount = tonumber(readfile("fent_executions.txt")) or 0
+    end
+    executionCount = executionCount + 1
+    writefile("fent_executions.txt", tostring(executionCount))
+end)
 
--- ESP Settings
-local ESPSettings = {
-    BoxColor = Color3.fromRGB(255, 0, 0),
-    Thickness = 1.6
-}
+-- Баннер с предупреждением
+local banner = Instance.new("Frame")
+banner.Size = UDim2.new(0, 300, 0, 80)
+banner.Position = UDim2.new(0.5, -150, 0.1, 0)
+banner.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+banner.BackgroundTransparency = 0.3
+banner.BorderSizePixel = 0
+banner.Parent = screenGui
+banner.Draggable = true
 
--- ESP storage
-local Boxes = {}
+local bannerGradient = Instance.new("UIGradient")
+bannerGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 0, 0)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+})
+bannerGradient.Rotation = 90
+bannerGradient.Parent = banner
 
--- FOV circle
-local FOVCircle = nil
+local bannerText = Instance.new("TextLabel")
+bannerText.Size = UDim2.new(1, 0, 1, 0)
+bannerText.BackgroundTransparency = 1
+bannerText.Text = "⚠️ RISK BAN ⚠️\nThis is HVH cheat\nYou will get 100% ban but not immediately\nIt was created for free and for fun"
+bannerText.TextColor3 = Color3.new(1, 1, 1)
+bannerText.Font = Enum.Font.Code
+bannerText.TextSize = 14
+bannerText.TextWrapped = true
+bannerText.Parent = banner
 
--- Helper functions for Silent Aim
-local function updateFOVCircle()
-    if FOVCircle then
-        FOVCircle.Visible = false
-        FOVCircle:Remove()
-        FOVCircle = nil
+local bannerClose = Instance.new("TextButton")
+bannerClose.Size = UDim2.new(0, 20, 0, 20)
+bannerClose.Position = UDim2.new(1, -25, 0, 3)
+bannerClose.BackgroundTransparency = 1
+bannerClose.Text = "X"
+bannerClose.TextColor3 = Color3.new(1, 1, 1)
+bannerClose.Font = Enum.Font.Code
+bannerClose.TextSize = 14
+bannerClose.Parent = banner
+bannerClose.MouseButton1Click:Connect(function()
+    banner.Visible = false
+end)
+
+-- ТВОЕ ГУИ (БЛЭКБОКС)
+local box = Instance.new("Frame")
+box.Size = UDim2.new(0, 220, 0, 235)
+box.Position = UDim2.new(0.5, -150, 0.5, -100)
+box.BackgroundColor3 = Color3.new(0.054902, 0.05098, 0.05098)
+box.BorderSizePixel = 0
+box.Active = true
+box.Draggable = true
+box.Parent = screenGui
+
+local text = Instance.new("TextLabel")
+text.Size = UDim2.new(1, 0, 0, 20)
+text.Position = UDim2.new(0, 80, 0, 5)
+text.BackgroundTransparency = 1
+text.Text = "fent.lol"
+text.TextColor3 = Color3.new(1, 1, 1)
+text.Font = Enum.Font.Code
+text.TextSize = 14
+text.TextXAlignment = Enum.TextXAlignment.Left
+text.Parent = box
+
+local line = Instance.new("Frame")
+line.Size = UDim2.new(1, 0, 0, 2)
+line.Position = UDim2.new(0, 0, 0, 25)
+line.BackgroundColor3 = Color3.new(0, 1, 0)
+line.BorderSizePixel = 0
+line.Parent = box
+
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.new(0, 0.3, 0)),
+    ColorSequenceKeypoint.new(0.2, Color3.new(0, 1, 0)),
+    ColorSequenceKeypoint.new(0.5, Color3.new(0, 1, 0.3)),
+    ColorSequenceKeypoint.new(0.8, Color3.new(0, 1, 0)),
+    ColorSequenceKeypoint.new(1, Color3.new(0, 0.3, 0))
+})
+gradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.8),
+    NumberSequenceKeypoint.new(0.15, 0),
+    NumberSequenceKeypoint.new(0.85, 0),
+    NumberSequenceKeypoint.new(1, 0.8)
+})
+gradient.Rotation = 0
+gradient.Parent = line
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 20, 0, 20)
+closeBtn.Position = UDim2.new(1, -25, 0, 3)
+closeBtn.BackgroundTransparency = 1
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.Font = Enum.Font.Code
+closeBtn.TextSize = 14
+closeBtn.Parent = box
+
+closeBtn.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end)
+
+local outline = Instance.new("Frame")
+outline.Size = UDim2.new(1, -20, 1, -160)
+outline.Position = UDim2.new(0, 10, 0, 45)
+outline.BackgroundTransparency = 0.9
+outline.BorderSizePixel = 2
+outline.BorderColor3 = Color3.fromRGB(150, 150, 150)
+outline.ZIndex = 5
+outline.Parent = box
+
+local avatar = Instance.new("ImageLabel")
+avatar.Size = UDim2.new(0, 50, 0, 50)
+avatar.Position = UDim2.new(0, 15, 0.5, -70)
+avatar.BackgroundTransparency = 1
+avatar.Image = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. game.Players.LocalPlayer.UserId .. "&width=100&height=100&format=png"
+avatar.Parent = box
+
+local username = Instance.new("TextLabel")
+username.Size = UDim2.new(0, 100, 0, 15)
+username.Position = UDim2.new(0, 70, 0.5, -70)
+username.BackgroundTransparency = 1
+username.Text = "@" .. game.Players.LocalPlayer.Name
+username.TextColor3 = Color3.fromRGB(150, 150, 150)
+username.Font = Enum.Font.Code
+username.TextSize = 10
+username.TextXAlignment = Enum.TextXAlignment.Left
+username.Parent = box
+
+local displayName = Instance.new("TextLabel")
+displayName.Size = UDim2.new(0, 100, 0, 20)
+displayName.Position = UDim2.new(0, 70, 0.5, -56)
+displayName.BackgroundTransparency = 1
+displayName.Text = game.Players.LocalPlayer.DisplayName
+displayName.TextColor3 = Color3.new(1, 1, 1)
+displayName.Font = Enum.Font.Code
+displayName.TextSize = 14
+displayName.TextXAlignment = Enum.TextXAlignment.Left
+displayName.Parent = box
+
+local execText = Instance.new("TextLabel")
+execText.Size = UDim2.new(0, 100, 0, 15)
+execText.Position = UDim2.new(0, 15, 0.5, -20)
+execText.BackgroundTransparency = 1
+execText.Text = "Executions: " .. executionCount
+execText.TextColor3 = Color3.fromRGB(150, 150, 150)
+execText.Font = Enum.Font.Code
+execText.TextSize = 11
+execText.TextXAlignment = Enum.TextXAlignment.Left
+execText.Parent = box
+
+local greenNumber = Instance.new("TextLabel")
+greenNumber.Size = UDim2.new(0, 100, 0, 15)
+greenNumber.Position = UDim2.new(0, 15, 0.5, -20)
+greenNumber.BackgroundTransparency = 1
+greenNumber.Text = tostring(executionCount)
+greenNumber.TextColor3 = Color3.new(0, 1, 0)
+greenNumber.Font = Enum.Font.Code
+greenNumber.TextSize = 11
+greenNumber.TextXAlignment = Enum.TextXAlignment.Left
+greenNumber.Parent = box
+
+local prefixWidth = #"Executions: " * 6
+greenNumber.Position = UDim2.new(0, 15 + prefixWidth, 0.5, -20)
+
+local instructionsArea = Instance.new("Frame")
+instructionsArea.Size = UDim2.new(1, -20, 0, 55)
+instructionsArea.Position = UDim2.new(0, 10, 0.5, 16)
+instructionsArea.BackgroundTransparency = 0.9
+instructionsArea.BorderSizePixel = 2
+instructionsArea.BorderColor3 = Color3.fromRGB(150, 150, 150)
+instructionsArea.ZIndex = 5
+instructionsArea.Parent = box
+
+local stableText = Instance.new("TextLabel")
+stableText.Size = UDim2.new(0, 70, 0, -10)
+stableText.Position = UDim2.new(0, 5, 0.5, -10)
+stableText.BackgroundTransparency = 1
+stableText.Text = "stable"
+stableText.TextColor3 = Color3.new(0, 1, 0)
+stableText.Font = Enum.Font.Code
+stableText.TextSize = 14
+stableText.TextXAlignment = Enum.TextXAlignment.Left
+stableText.Parent = instructionsArea
+
+local injectBtn = Instance.new("TextButton")
+injectBtn.Size = UDim2.new(1, -20, 0, 30)
+injectBtn.Position = UDim2.new(0.5, -100, 1, -37)
+injectBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+injectBtn.BorderSizePixel = 2
+injectBtn.BorderColor3 = Color3.fromRGB(27, 27, 27)
+injectBtn.Text = "inject"
+injectBtn.TextColor3 = Color3.new(1, 1, 1)
+injectBtn.Font = Enum.Font.Code
+injectBtn.TextSize = 12
+injectBtn.Parent = box
+
+local loadingFrame = Instance.new("Frame")
+loadingFrame.Size = UDim2.new(1, 0, 0, 30)
+loadingFrame.Position = UDim2.new(0, 0, 0.5, -15)
+loadingFrame.BackgroundTransparency = 1
+loadingFrame.Visible = false
+loadingFrame.Parent = box
+
+local dollars = {}
+for i = 1, 3 do
+    local dollar = Instance.new("TextLabel")
+    dollar.Size = UDim2.new(0, 20, 0, 20)
+    dollar.Position = UDim2.new(0, (i-1) * 25 + 70, 0, 5)
+    dollar.BackgroundTransparency = 1
+    dollar.Text = "$"
+    dollar.TextColor3 = Color3.new(0, 1, 0)
+    dollar.Font = Enum.Font.Code
+    dollar.TextSize = 16
+    dollar.Visible = false
+    dollar.Parent = loadingFrame
+    table.insert(dollars, dollar)
+end
+
+injectBtn.MouseButton1Click:Connect(function()
+    print("Inject button")
+    
+    outline.Visible = false
+    avatar.Visible = false
+    username.Visible = false
+    displayName.Visible = false
+    execText.Visible = false
+    greenNumber.Visible = false
+    instructionsArea.Visible = false
+    stableText.Visible = false
+    injectBtn.Visible = false
+    
+    loadingFrame.Visible = true
+    
+    for _, dollar in ipairs(dollars) do
+        dollar.Visible = true
     end
     
-    if CombatSettings.ShowFOV then
-        FOVCircle = Drawing.new("Circle")
-        FOVCircle.Thickness = 1
-        FOVCircle.Color = CombatSettings.Color
-        FOVCircle.Transparency = 0.5
-        FOVCircle.Filled = false
-        FOVCircle.Visible = true
-        FOVCircle.Radius = CombatSettings.aimFOV
-        FOVCircle.NumSides = 200
-        FOVCircle.Position = UserInputService:GetMouseLocation()
-    end
-end
-
-local function teamCheck(p)
-    return p:GetAttribute("Team") ~= LocalPlayer:GetAttribute("Team")
-end
-
-local function IsVisible(part)
-    local char = LocalPlayer.Character
-    if not char then return false end
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    params.FilterDescendantsInstances = {char, Camera}
-    local result = Workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, params)
-    return result == nil or result.Instance:IsDescendantOf(part.Parent)
-end
-
-local function getClosestPlayer()
-    local closest = nil
-    local shortestDistance = CombatSettings.aimFOV
-    local mousePos = UserInputService:GetMouseLocation()
+    local startTime = tick()
+    local animationRunning = true
+    
+    task.spawn(function()
+        while animationRunning and tick() - startTime < 5 do
+            for i, dollar in ipairs(dollars) do
+                dollar.Position = UDim2.new(0, (i-1) * 25 + 70, 0, 0)
+                task.wait(0.1)
+                dollar.Position = UDim2.new(0, (i-1) * 25 + 70, 0, 10)
+                task.wait(0.1)
+            end
+        end
         
-    local players = Players:GetPlayers()
-    for i = 1, #players do
-        local p = players[i]
-        if p ~= LocalPlayer and p.Character and teamCheck(p) then
-            local targetPart = p.Character:FindFirstChild(CombatSettings.targetPart)
-            if targetPart then
-                local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
-                if humanoid and humanoid.Health > 0 then
-                    if CombatSettings.VisibleCheck and not IsVisible(targetPart) then continue end
-                    
-                    local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                    if onScreen then
-                        local distance = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
-                        if distance < shortestDistance then
-                            shortestDistance = distance
-                            closest = p.Character
-                        end
+        local elapsed = tick() - startTime
+        if elapsed < 5 then
+            task.wait(5 - elapsed)
+        end
+        
+        screenGui:Destroy()
+        
+        -- ========== ОСНОВНАЯ ЧАСТЬ СКРИПТА ==========
+        local Players = game:GetService("Players")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Workspace = game:GetService("Workspace")
+        local RunService = game:GetService("RunService")
+        local UserInputService = game:GetService("UserInputService")
+        local LocalPlayer = Players.LocalPlayer
+        local Camera = Workspace.CurrentCamera
+        local Lighting = game:GetService("Lighting")
+        local TweenService = game:GetService("TweenService")
+        local ContextActionService = game:GetService("ContextActionService")
+        local HttpService = game:GetService("HttpService")
+        local UIS = UserInputService
+        local CollectionService = game:GetService("CollectionService")
+        
+        local DrawingSupported = pcall(Drawing.new, "Square")
+        if not DrawingSupported then
+            warn("⚠️ Drawing not supported – ESP and FOV circle disabled.")
+        end
+        
+        -- ========== КОНФИГ (ВСЕ НАСТРОЙКИ) ==========
+        _G.Config = {
+            -- Silent Aim
+            SilentAim = false,
+            AimbotUseVisibleCheck = true,
+            HitChance = 100,
+            Fov = 150,
+            ShowFov = true,
+            AimPart = "HumanoidRootPart",
+            
+            -- Miss Chance (чтобы не детектило)
+            MissChance = 33,   -- 33% пуль летят в MissPart
+            MissPart = "Torso",
+            
+            -- ESP (игроки)
+            Esp = true,
+            EspBoxes = true,
+            EspNames = true,
+            EspTeamMode = "Enemies",
+            UseTeamCheck = true,
+            UseVisCheck = true,
+            EnemyColor = Color3.fromRGB(150, 200, 60),
+            TeammateColor = Color3.fromRGB(60, 150, 200),
+            HighlightColor = Color3.fromRGB(255, 0, 0),
+            ESPHealth = true,
+            ESPHealthBar = true,
+            EspDistance = true,
+            ESPWeapon = true,
+            EspTracers = true,
+            EspHeadDot = true,
+            ESPBoxThickness = 1.6,
+            ESPNameSize = 14,
+            ESPDistanceSize = 12,
+            ESPMaxDistance = 2000,
+            ESPBoxColor = Color3.fromRGB(255, 70, 150),
+            ESPGlowColor = Color3.fromRGB(255, 70, 150),
+            ESPNameColor = Color3.fromRGB(255, 255, 255),
+            ESPDistanceColor = Color3.fromRGB(255, 255, 255),
+            ESPColor = Color3.fromRGB(255, 70, 150),
+            
+            -- Misc
+            MiscBhop = false,
+            BoostSpeed = false,
+            EarlyRun = false,
+            Wallbang = false,
+            FlashbangRemover = true,
+            SmokeRemover = true,
+            HitboxExpander = false,
+            ChamsEnabled = false,
+            ChamsColor = Color3.fromRGB(255, 0, 0),
+            ChamsTransparency = 0.3,
+            BulletTracers = false,
+            SkyChanger = false,
+            SkyStyle = "Dark Sky",
+            CustomKnifeEnabled = false,
+            SelectedKnife = "Butterfly Knife",
+            SkinChangerEnabled = false,
+            SelectedSkins = {},
+            WeaponNameESP = false,
+            ConfigName = "default",
+            MenuKey = Enum.KeyCode.RightShift,
+            FPScounter = false,
+            MiscThirdPerson = false,
+            MiscAntiAim = false,
+            InfiniteJump = false,
+        }
+        
+        -- ========== СИСТЕМА КОНФИГОВ (СОХРАНЕНИЕ В cfgs.txt) ==========
+        local Configs = {}
+        local currentConfigName = "default"
+        
+        local function LoadConfigsFromFile()
+            if isfile and isfile("cfgs.txt") then
+                local success, data = pcall(function()
+                    return readfile("cfgs.txt")
+                end)
+                if success and data and data ~= "" then
+                    local success2, decoded = pcall(function()
+                        return HttpService:JSONDecode(data)
+                    end)
+                    if success2 and type(decoded) == "table" then
+                        Configs = decoded
                     end
                 end
             end
         end
-    end
-    return closest
-end
-
-local function SetupSilentAim()
-    local success, err = pcall(function()
-        local BulletModule = ReplicatedStorage:WaitForChild("Components"):WaitForChild("Weapon"):WaitForChild("Classes"):WaitForChild("Bullet")
-        local Bullet = require(BulletModule)
-        local realMath = math
         
-        getfenv(Bullet._performRaycast).math = setmetatable({}, {
-            __index = function(_, index)
-                if index == "min" then
-                    local target = getClosestPlayer()
-                    if target and CombatSettings.SilentEnabled then
-                        if realMath.random(1, 100) <= CombatSettings.HitChance then
-                            local part = target:FindFirstChild(CombatSettings.targetPart) or target:FindFirstChild("Head")
-                            if part then
-                                debug.setstack(2, 5, Ray.new(Camera.CFrame.Position, (part.Position - Camera.CFrame.Position).Unit))
-                                return function() return 0 end
+        local function SaveConfigsToFile()
+            if writefile then
+                local success, json = pcall(function()
+                    return HttpService:JSONEncode(Configs)
+                end)
+                if success then
+                    writefile("cfgs.txt", json)
+                end
+            end
+        end
+        
+        LoadConfigsFromFile()
+        
+        local function deepCopy(original)
+            local copy = {}
+            for k, v in pairs(original) do
+                if type(v) == "table" then
+                    copy[k] = deepCopy(v)
+                else
+                    copy[k] = v
+                end
+            end
+            return copy
+        end
+        
+        local function SaveConfig(name)
+            local configToSave = {}
+            for k, v in pairs(_G.Config) do
+                if k ~= "ConfigName" then
+                    if typeof(v) == "Color3" then
+                        configToSave[k] = {R = v.R, G = v.G, B = v.B}
+                    else
+                        configToSave[k] = v
+                    end
+                end
+            end
+            Configs[name] = deepCopy(configToSave)
+            SaveConfigsToFile()
+        end
+        
+        local function LoadConfig(name)
+            local configData = Configs[name]
+            if configData then
+                for k, v in pairs(configData) do
+                    if _G.Config[k] ~= nil then
+                        if type(v) == "table" and v.R then
+                            _G.Config[k] = Color3.new(v.R, v.G, v.B)
+                        else
+                            _G.Config[k] = v
+                        end
+                    end
+                end
+                _G.Config.ConfigName = name
+                currentConfigName = name
+                RefreshAllUI()
+            end
+        end
+        
+        local function DeleteConfig(name)
+            Configs[name] = nil
+            SaveConfigsToFile()
+        end
+        
+        local function ListConfigs()
+            local list = {}
+            for name in pairs(Configs) do
+                table.insert(list, name)
+            end
+            return list
+        end
+        
+        local function ResetToDefault()
+            local default = {
+                SilentAim = false,
+                AimbotUseVisibleCheck = true,
+                HitChance = 100,
+                Fov = 150,
+                ShowFov = true,
+                AimPart = "HumanoidRootPart",
+                MissChance = 33,
+                MissPart = "Torso",
+                Esp = true,
+                EspBoxes = true,
+                EspNames = true,
+                UseTeamCheck = true,
+                UseVisCheck = true,
+                EnemyColor = Color3.fromRGB(150, 200, 60),
+                TeammateColor = Color3.fromRGB(60, 150, 200),
+                HighlightColor = Color3.fromRGB(255, 0, 0),
+                ESPHealth = true,
+                ESPHealthBar = true,
+                EspDistance = true,
+                ESPWeapon = true,
+                EspTracers = true,
+                EspHeadDot = true,
+                ESPBoxThickness = 1.6,
+                ESPNameSize = 14,
+                ESPDistanceSize = 12,
+                ESPMaxDistance = 2000,
+                ESPBoxColor = Color3.fromRGB(255, 70, 150),
+                ESPGlowColor = Color3.fromRGB(255, 70, 150),
+                ESPNameColor = Color3.fromRGB(255, 255, 255),
+                ESPDistanceColor = Color3.fromRGB(255, 255, 255),
+                ESPColor = Color3.fromRGB(255, 70, 150),
+                MiscBhop = false,
+                BoostSpeed = false,
+                EarlyRun = false,
+                Wallbang = false,
+                FlashbangRemover = true,
+                SmokeRemover = true,
+                HitboxExpander = false,
+                ChamsEnabled = false,
+                ChamsColor = Color3.fromRGB(255,0,0),
+                ChamsTransparency = 0.3,
+                BulletTracers = false,
+                SkyChanger = false,
+                SkyStyle = "Dark Sky",
+                CustomKnifeEnabled = false,
+                SelectedKnife = "Butterfly Knife",
+                SkinChangerEnabled = false,
+                SelectedSkins = {},
+                WeaponNameESP = false,
+                MenuKey = Enum.KeyCode.RightShift,
+                FPScounter = false,
+                MiscThirdPerson = false,
+                MiscAntiAim = false,
+                InfiniteJump = false,
+            }
+            for k, v in pairs(default) do
+                _G.Config[k] = v
+            end
+            _G.Config.ConfigName = "default"
+            currentConfigName = "default"
+            RefreshAllUI()
+        end
+        
+        -- ========== ЛОКАЛИЗАЦИЯ ==========
+        Language = "EN"
+        local Locales = {
+            EN = {
+                TabAim = "AIM",
+                TabESP = "ESP",
+                TabMisc = "MISC",
+                TabVisuals = "VISUALS",
+                TabSkins = "SKINS",
+                TabColors = "COLORS",
+                TabConfigs = "CONFIGS",
+                AimEnabled = "Silent Aim",
+                AimPart = "Aim Part",
+                FOV = "FOV",
+                HitChance = "Hit Chance",
+                WallCheck = "Wall Check",
+                ShowFOV = "Show FOV",
+                MissChance = "Miss Chance (%)",
+                MissPart = "Miss Part",
+                ESPEnabled = "ESP Enabled",
+                ESPBox = "Box",
+                BoxThickness = "Box Thickness",
+                ESPName = "Name",
+                NameSize = "Name Size",
+                ESPHealth = "Health Text",
+                HealthBar = "Health Bar",
+                ESPDistance = "Distance",
+                ESPWeapon = "Weapon",
+                DistanceSize = "Distance Size",
+                MaxDistance = "Max Distance",
+                ESPColor = "FOV Circle Color",
+                BunnyHop = "Bunny Hop",
+                BoostSpeed = "Boost Speed",
+                EarlyRun = "Early Run",
+                Wallbang = "Wallbang",
+                FlashbangRemover = "Flashbang Remover",
+                SmokeRemover = "Smoke Remover",
+                HitboxExpander = "Hitbox Expander",
+                ChamsEnabled = "Chams",
+                ChamsColor = "Chams Color",
+                ChamsTransparency = "Chams Transparency",
+                BulletTracers = "Bullet Tracers",
+                SkyChanger = "Sky Changer",
+                SkyStyle = "Sky Style",
+                CustomKnifeEnabled = "Custom Knife",
+                SelectKnife = "Select Knife",
+                Language = "Language",
+                LangEN = "English",
+                LangRU = "Russian",
+                BoxColor = "Box Color",
+                GlowColor = "Glow Color",
+                NameColor = "Name Color",
+                DistanceColor = "Distance Color",
+                EnemyColor = "Enemy Color",
+                TeammateColor = "Teammate Color",
+                HighlightColor = "Highlight Color",
+                InfiniteJump = "Infinite Jump",
+                ThirdPerson = "Third Person",
+                AntiAim = "Anti Aim",
+                SaveConfig = "Save Config",
+                LoadConfig = "Load Config",
+                DeleteConfig = "Delete Config",
+                ConfigName = "Config Name",
+                SavedConfigs = "Saved Configs:",
+                NoConfigs = "No saved configs",
+                SkinChanger = "SkinChanger",
+                EnableSkinChanger = "Enable SkinChanger",
+                WeaponNameESP = "Weapon Name ESP",
+            },
+            RU = {
+                TabAim = "АИМ",
+                TabESP = "ЭСП",
+                TabMisc = "РАЗНОЕ",
+                TabVisuals = "ВИЗУАЛ",
+                TabSkins = "СКИНЫ",
+                TabColors = "ЦВЕТА",
+                TabConfigs = "КОНФИГИ",
+                AimEnabled = "Сайлент аим",
+                AimPart = "Часть тела",
+                FOV = "Радиус",
+                HitChance = "Шанс попадания",
+                WallCheck = "Проверка стен",
+                ShowFOV = "Показать FOV",
+                MissChance = "Шанс промаха (%)",
+                MissPart = "Часть для промаха",
+                ESPEnabled = "ЭСП Включён",
+                ESPBox = "Коробка",
+                BoxThickness = "Толщина",
+                ESPName = "Имя",
+                NameSize = "Размер имени",
+                ESPHealth = "Текст здоровья",
+                HealthBar = "Полоска здоровья",
+                ESPDistance = "Дистанция",
+                ESPWeapon = "Оружие",
+                DistanceSize = "Размер дистанции",
+                MaxDistance = "Макс. дистанция",
+                ESPColor = "Цвет круга FOV",
+                BunnyHop = "Баннихоп",
+                BoostSpeed = "Ускорение",
+                EarlyRun = "Ранний старт",
+                Wallbang = "Валлбанг",
+                FlashbangRemover = "Убрать вспышки",
+                SmokeRemover = "Убрать дым",
+                HitboxExpander = "Расширитель хитбоксов",
+                ChamsEnabled = "Чамс",
+                ChamsColor = "Цвет чамс",
+                ChamsTransparency = "Прозрачность чамс",
+                BulletTracers = "Трассеры пуль",
+                SkyChanger = "Смена неба",
+                SkyStyle = "Стиль неба",
+                CustomKnifeEnabled = "Кастомный нож",
+                SelectKnife = "Выбрать нож",
+                Language = "Язык",
+                LangEN = "Английский",
+                LangRU = "Русский",
+                BoxColor = "Цвет бокса",
+                GlowColor = "Цвет свечения",
+                NameColor = "Цвет имени",
+                DistanceColor = "Цвет дистанции",
+                EnemyColor = "Цвет врага",
+                TeammateColor = "Цвет тиммейта",
+                HighlightColor = "Цвет выделения",
+                InfiniteJump = "Бесконечный прыжок",
+                ThirdPerson = "Третье лицо",
+                AntiAim = "Анти аим",
+                SaveConfig = "Сохранить конфиг",
+                LoadConfig = "Загрузить",
+                DeleteConfig = "Удалить",
+                ConfigName = "Имя конфига",
+                SavedConfigs = "Сохранённые конфиги:",
+                NoConfigs = "Нет сохранённых конфигов",
+                SkinChanger = "Скинченджер",
+                EnableSkinChanger = "Включить скинченджер",
+                WeaponNameESP = "Названия оружия",
+            }
+        }
+        local function L(key) return Locales[Language][key] or key end
+        
+        -- ========== SKY STYLES ==========
+        local SkyStyles = {"Dark Sky","Art Mountain","Vaporwave","Nebula","Twilight","Lake Sky","Alien Red","Black Mesa","Clouds"}
+        local SkyAssets = {
+            ["Dark Sky"] = {Up = "rbxassetid://570555929", Rt = "rbxassetid://570555882", Dn = "rbxassetid://570555964", Ft = "rbxassetid://570555800", Lf = "rbxassetid://570555840", Bk = "rbxassetid://570555736"},
+            ["Art Mountain"] = {Up = "rbxassetid://2128462236", Rt = "rbxassetid://2128462027", Lf = "rbxassetid://2128462027", Ft = "rbxassetid://2128458653", Bk = "rbxassetid://2128458653", Dn = "rbxassetid://2128462480"},
+            ["Vaporwave"] = {Up = "rbxassetid://1417494643", Rt = "rbxassetid://1417494499", Lf = "rbxassetid://1417494402", Ft = "rbxassetid://1417494253", Bk = "rbxassetid://1417494030", Dn = "rbxassetid://1417494146"},
+            ["Nebula"] = {Up = "rbxassetid://159454288", Rt = "rbxassetid://159454300", Lf = "rbxassetid://159454286", Ft = "rbxassetid://159454293", Bk = "rbxassetid://159454299", Dn = "rbxassetid://159454296"},
+            ["Twilight"] = {Up = "rbxassetid://264907379", Rt = "rbxassetid://264908886", Lf = "rbxassetid://264909758", Ft = "rbxassetid://264909420", Bk = "rbxassetid://264908339", Dn = "rbxassetid://264907909"},
+            ["Lake Sky"] = {Rt = "rbxassetid://6823531746", Up = "rbxassetid://6823528533", SunTextureId = "rbxassetid://5392574622", Dn = "rbxassetid://6823525702", Ft = "rbxassetid://6823482923", Lf = "rbxassetid://6823530023", Bk = "rbxassetid://6823523318"},
+            ["Alien Red"] = {Up = "rbxassetid://7123412196", Rt = "rbxassetid://7123402505", Dn = "rbxassetid://7123387679", Ft = "rbxassetid://7123390433", Lf = "rbxassetid://7123394786", Bk = "rbxassetid://7123385217"},
+            ["Black Mesa"] = {Up = "rbxassetid://9569598752", Rt = "rbxassetid://9569601267", Dn = "rbxassetid://9569613307", Ft = "rbxassetid://9569611418", Lf = "rbxassetid://9569608166", Bk = "rbxassetid://9569742122"},
+            ["Clouds"] = {Up = "rbxassetid://570557727", Rt = "rbxassetid://570557672", Lf = "rbxassetid://570557620", Ft = "rbxassetid://570557559", Bk = "rbxassetid://570557514", Dn = "rbxassetid://570557775"},
+        }
+        
+        -- ========== ПЕРЕМЕННЫЕ ==========
+        local FOVCircle = nil
+        local ScreenCenter = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+        local ESPObjects = {}
+        local BHopConn = nil
+        local FlashConn, SmokeConn = nil, nil
+        local aimParts = {"HumanoidRootPart","Head","Torso"}
+        local EarlyRunConn = nil
+        local wallbangAddedConn = nil
+        local boostConn = nil
+        local lastHitboxUpdate = 0
+        local WatermarkText = Drawing.new("Text")
+        WatermarkText.Text = "fent"
+        WatermarkText.Size = 20
+        WatermarkText.Color = Color3.new(1, 1, 1)
+        WatermarkText.Outline = true
+        WatermarkText.Position = Vector2.new(10, 30)
+        WatermarkText.Visible = true
+        
+        local FPSCounterText = nil
+        local lastFPSUpdate = 0
+        local frameCount = 0
+        local currentFPS = 60
+        
+        -- Для управления камерой от третьего лица
+        local camYaw = 0
+        local camPitch = 0
+        local camDistance = 10
+        
+        -- Мини-GUI для клавиш
+        local KeybindDisplay = Drawing.new("Text")
+        KeybindDisplay.Text = ""
+        KeybindDisplay.Size = 14
+        KeybindDisplay.Color = Color3.new(1, 1, 0)
+        KeybindDisplay.Outline = true
+        KeybindDisplay.Position = Vector2.new(10, 60)
+        KeybindDisplay.Visible = true
+        
+        local function UpdateKeybindDisplay()
+            local tpState = _G.Config.MiscThirdPerson and "ON" or "OFF"
+            local aaState = _G.Config.MiscAntiAim and "ON" or "OFF"
+            KeybindDisplay.Text = string.format("Third: T [%s] | Anti: Y [%s]", tpState, aaState)
+        end
+        
+        -- ========== SILENT AIM (с Miss Chance) ==========
+        local function teamCheckSilent(p)
+            return p:GetAttribute("Team") ~= LocalPlayer:GetAttribute("Team")
+        end
+        
+        local function IsVisibleSilent(part)
+            local char = LocalPlayer.Character
+            if not char then return false end
+            local params = RaycastParams.new()
+            params.FilterType = Enum.RaycastFilterType.Exclude
+            params.FilterDescendantsInstances = {char, Camera}
+            local result = Workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, params)
+            return result == nil or result.Instance:IsDescendantOf(part.Parent)
+        end
+        
+        local function getClosestPlayerSilent()
+            local closest = nil
+            local shortestDistance = _G.Config.Fov
+            local mousePos = UserInputService:GetMouseLocation()
+                
+            local players = Players:GetPlayers()
+            for i = 1, #players do
+                local p = players[i]
+                if p ~= LocalPlayer and p.Character and teamCheckSilent(p) then
+                    local targetPart = p.Character:FindFirstChild(_G.Config.AimPart)
+                    if targetPart then
+                        local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
+                        if humanoid and humanoid.Health > 0 then
+                            if _G.Config.AimbotUseVisibleCheck and not IsVisibleSilent(targetPart) then continue end
+                            
+                            local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                            if onScreen then
+                                local distance = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
+                                if distance < shortestDistance then
+                                    shortestDistance = distance
+                                    closest = p.Character
+                                end
                             end
                         end
                     end
                 end
-                return realMath[index]
             end
-        })
+            return closest
+        end
+        
+        -- Функция для выбора части тела с учётом MissChance
+        local function getTargetPartWithMiss(targetChar)
+            if not targetChar then return nil end
+            -- Если MissChance сработал, целимся в MissPart, иначе в AimPart
+            if math.random(1, 100) <= _G.Config.MissChance then
+                return targetChar:FindFirstChild(_G.Config.MissPart) or targetChar:FindFirstChild(_G.Config.AimPart) or targetChar:FindFirstChild("Head")
+            else
+                return targetChar:FindFirstChild(_G.Config.AimPart) or targetChar:FindFirstChild("Head")
+            end
+        end
+        
+        local function SetupSilentAim()
+            local success, err = pcall(function()
+                local BulletModule = ReplicatedStorage:WaitForChild("Components"):WaitForChild("Weapon"):WaitForChild("Classes"):WaitForChild("Bullet")
+                local Bullet = require(BulletModule)
+                local realMath = math
+                
+                getfenv(Bullet._performRaycast).math = setmetatable({}, {
+                    __index = function(_, index)
+                        if index == "min" then
+                            -- Проверяем, нажата ли кнопка мыши (выстрел)
+                            if not UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+                                return realMath.min
+                            end
+                            local target = getClosestPlayerSilent()
+                            if target and _G.Config.SilentAim then
+                                if realMath.random(1, 100) <= _G.Config.HitChance then
+                                    local part = getTargetPartWithMiss(target)
+                                    if part then
+                                        debug.setstack(2, 5, Ray.new(Camera.CFrame.Position, (part.Position - Camera.CFrame.Position).Unit))
+                                        return function() return 0 end
+                                    end
+                                end
+                            end
+                        end
+                        return realMath[index]
+                    end
+                })
+            end)
+            
+            if not success then
+                warn("Silent Aim setup failed:", err)
+            end
+        end
+        
+        -- ========== ESP (ИГРОКИ) - обновляется каждый кадр ==========
+        local function IsEnemy(plr)
+            if plr == LocalPlayer then return false end
+            if _G.Config.UseTeamCheck then
+                if plr.Team and LocalPlayer.Team then
+                    return plr.Team ~= LocalPlayer.Team
+                end
+                local mc, tc = LocalPlayer.Character, plr.Character
+                return mc and tc and mc.Parent.Name ~= tc.Parent.Name
+            end
+            return true
+        end
+        
+        local weaponCache = setmetatable({}, {__mode = "k"})
+        local WeaponNames = {
+            "Glock-18", "P250", "Tec-9", "Desert Eagle", "Dual Berettas",
+            "MAC-10", "Negev", "P90", "Nova", "XM1014",
+            "Galil AR", "AK-47", "SG 553", "SSG 08", "AWP"
+        }
+        local WeaponSet = {}
+        for _, name in ipairs(WeaponNames) do
+            WeaponSet[name] = true
+        end
+        
+        local function GetWeaponName(char)
+            if not char then return "None" end
+            if weaponCache[char] then return weaponCache[char] end
+            local tool = char:FindFirstChildOfClass("Tool")
+            if tool and WeaponSet[tool.Name] then
+                weaponCache[char] = tool.Name
+                return tool.Name
+            end
+            for _, name in ipairs(WeaponNames) do
+                local part = char:FindFirstChild(name)
+                if part and (part:IsA("Part") or part:IsA("MeshPart")) then
+                    weaponCache[char] = name
+                    return name
+                end
+            end
+            weaponCache[char] = "None"
+            return "None"
+        end
+        
+        local function setupCharCache(char)
+            if not char then return end
+            local function clearCache()
+                weaponCache[char] = nil
+            end
+            char.ChildAdded:Connect(clearCache)
+            char.ChildRemoved:Connect(clearCache)
+        end
+        
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer then
+                setupCharCache(plr.Character)
+                plr.CharacterAdded:Connect(setupCharCache)
+            end
+        end
+        Players.PlayerAdded:Connect(function(plr)
+            if plr ~= LocalPlayer then
+                plr.CharacterAdded:Connect(setupCharCache)
+            end
+        end)
+        
+        local function CreateESP(plr)
+            if ESPObjects[plr] then return end
+            local objs = {}
+            if _G.Config.EspBoxes then
+                objs.Box = Drawing.new("Square")
+                objs.Box.Thickness = _G.Config.ESPBoxThickness
+                objs.Box.Filled = false
+                objs.Box.Color = _G.Config.ESPBoxColor
+                objs.Box.Transparency = 0.7
+                objs.Box.Visible = false
+            end
+            if _G.Config.EspNames then
+                objs.Name = Drawing.new("Text")
+                objs.Name.Size = _G.Config.ESPNameSize
+                objs.Name.Center = true
+                objs.Name.Outline = true
+                objs.Name.Color = _G.Config.ESPNameColor
+                objs.Name.Visible = false
+            end
+            if _G.Config.ESPHealth then
+                objs.Health = Drawing.new("Text")
+                objs.Health.Size = 12
+                objs.Health.Center = true
+                objs.Health.Outline = true
+                objs.Health.Visible = false
+            end
+            if _G.Config.ESPHealthBar then
+                objs.HealthBar = Drawing.new("Square")
+                objs.HealthBar.Thickness = 1
+                objs.HealthBar.Filled = true
+                objs.HealthBar.Visible = false
+            end
+            if _G.Config.EspDistance then
+                objs.Distance = Drawing.new("Text")
+                objs.Distance.Size = _G.Config.ESPDistanceSize
+                objs.Distance.Center = true
+                objs.Distance.Outline = true
+                objs.Distance.Color = _G.Config.ESPDistanceColor
+                objs.Distance.Visible = false
+            end
+            if _G.Config.ESPWeapon then
+                objs.Weapon = Drawing.new("Text")
+                objs.Weapon.Size = 12
+                objs.Weapon.Center = true
+                objs.Weapon.Outline = true
+                objs.Weapon.Color = Color3.fromRGB(200,200,255)
+                objs.Weapon.Visible = false
+            end
+            ESPObjects[plr] = objs
+        end
+        
+        local function RemoveESP(plr)
+            if ESPObjects[plr] then
+                for _, obj in pairs(ESPObjects[plr]) do
+                    if obj and obj.Remove then obj:Remove() end
+                end
+                ESPObjects[plr] = nil
+            end
+        end
+        
+        local function ClearAllESP()
+            for plr in pairs(ESPObjects) do
+                RemoveESP(plr)
+            end
+            ESPObjects = {}
+        end
+        
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then CreateESP(p) end
+        end
+        Players.PlayerAdded:Connect(function(p)
+            if p ~= LocalPlayer then CreateESP(p) end
+        end)
+        Players.PlayerRemoving:Connect(RemoveESP)
+        
+        local function UpdateESP()
+            if not _G.Config.Esp then
+                ClearAllESP()
+                return
+            end
+            
+            local myRoot = LocalPlayer.Character and (LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or LocalPlayer.Character:FindFirstChild("Torso"))
+            
+            for plr, objs in pairs(ESPObjects) do
+                local c = plr.Character
+                local hum = c and c:FindFirstChildOfClass("Humanoid")
+                if not c or not hum or hum.Health <= 0 or not IsEnemy(plr) then
+                    for _, obj in pairs(objs) do
+                        if obj and obj.Visible ~= nil then
+                            obj.Visible = false
+                        end
+                    end
+                else
+                    local root = c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
+                    local head = c:FindFirstChild("Head") or c:FindFirstChild("Torso")
+                    if root and head and myRoot and (myRoot.Position - root.Position).Magnitude <= _G.Config.ESPMaxDistance then
+                        local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0,0.6,0))
+                        local rootPos = Camera:WorldToViewportPoint(root.Position)
+                        local legPos = Camera:WorldToViewportPoint(root.Position - Vector3.new(0,3.5,0))
+                        if rootPos.Z >= 0 then
+                            local rV = Vector2.new(rootPos.X, rootPos.Y)
+                            local hV = Vector2.new(headPos.X, headPos.Y)
+                            local lV = Vector2.new(legPos.X, legPos.Y)
+                            
+                            if objs.Box then
+                                local h = math.abs(hV.Y - lV.Y)
+                                local w = h * 0.55
+                                objs.Box.Size = Vector2.new(w, h)
+                                objs.Box.Position = rV - Vector2.new(w/2, h/2)
+                                objs.Box.Color = _G.Config.ESPBoxColor
+                                objs.Box.Transparency = 0.7
+                                objs.Box.Visible = _G.Config.EspBoxes
+                            end
+                            
+                            if objs.Name then
+                                objs.Name.Text = plr.Name
+                                objs.Name.Position = Vector2.new(hV.X, hV.Y - 30)
+                                objs.Name.Color = _G.Config.ESPNameColor
+                                objs.Name.Visible = _G.Config.EspNames
+                            end
+                            
+                            if objs.Health then
+                                objs.Health.Text = math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
+                                local perc = hum.Health / hum.MaxHealth
+                                objs.Health.Color = Color3.new(1 - perc, perc, 0)
+                                objs.Health.Position = Vector2.new(hV.X, hV.Y - 15)
+                                objs.Health.Visible = _G.Config.ESPHealth
+                            end
+                            
+                            if objs.HealthBar then
+                                local h = math.abs(hV.Y - lV.Y)
+                                local w = h * 0.1
+                                local bx = rV.X - h * 0.3 - w - 2
+                                local by = rV.Y - h / 2
+                                objs.HealthBar.Size = Vector2.new(w, h)
+                                objs.HealthBar.Position = Vector2.new(bx, by)
+                                local perc = hum.Health / hum.MaxHealth
+                                objs.HealthBar.Color = Color3.new(1 - perc, perc, 0)
+                                objs.HealthBar.Visible = _G.Config.ESPHealthBar
+                            end
+                            
+                            if objs.Distance and myRoot then
+                                local dist = (myRoot.Position - root.Position).Magnitude
+                                objs.Distance.Text = math.floor(dist) .. "m"
+                                objs.Distance.Position = Vector2.new(rV.X, rV.Y + 20)
+                                objs.Distance.Color = _G.Config.ESPDistanceColor
+                                objs.Distance.Visible = _G.Config.EspDistance
+                            end
+                            
+                            if objs.Weapon then
+                                local weaponName = GetWeaponName(c)
+                                objs.Weapon.Text = weaponName
+                                objs.Weapon.Position = Vector2.new(rV.X, rV.Y + 35)
+                                objs.Weapon.Visible = _G.Config.ESPWeapon and objs.Weapon.Text ~= "None"
+                            end
+                        else
+                            for _, obj in pairs(objs) do
+                                if obj and obj.Visible ~= nil then obj.Visible = false end
+                            end
+                        end
+                    else
+                        for _, obj in pairs(objs) do
+                            if obj and obj.Visible ~= nil then obj.Visible = false end
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- ========== WEAPON NAME ESP (Quad + Billboard) ==========
+        local WeaponESP = {
+            Enabled = true,
+            Boxes = true,
+            Color = Color3.fromRGB(255, 255, 255),
+            Thickness = 2,
+            Objects = setmetatable({}, { __mode = "kv" }),
+            Connections = {}
+        }
+        
+        local cam = workspace.CurrentCamera
+        local Debris = nil
+        
+        local function findDebris()
+            return workspace:FindFirstChild("Debris")
+        end
+        
+        local function Draw(objType, props)
+            if not Drawing then return nil end
+            local new = Drawing.new(objType)
+            for k, v in pairs(props or {}) do new[k] = v end
+            return new
+        end
+        
+        local function getInfo(model)
+            if not model then return nil end
+            return {
+                weapon = model:GetAttribute("Weapon"),
+                skin = model:GetAttribute("Skin"),
+                owner = model:GetAttribute("Owner"),
+                model = model
+            }
+        end
+        
+        local function getDistance(pos)
+            return cam and (cam.CFrame.Position - pos).Magnitude or 0
+        end
+        
+        local Box = {}
+        Box.__index = Box
+        
+        function Box.new(obj, opt)
+            local self = setmetatable({}, Box)
+            self.Object = obj
+            self.PrimaryPart = opt.PrimaryPart or (obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart"))
+            if not self.PrimaryPart then
+                self.PrimaryPart = obj
+                self.Size = Vector3.new(2, 2, 2)
+            else
+                self.Size = obj:GetExtentsSize()
+            end
+            self.Color = opt.Color or WeaponESP.Color
+            self.Thickness = opt.Thickness or WeaponESP.Thickness
+            
+            self.Quad = Draw("Quad", {
+                Thickness = self.Thickness,
+                Color = self.Color,
+                Transparency = 1,
+                Filled = false,
+                Visible = WeaponESP.Enabled and WeaponESP.Boxes
+            })
+            
+            local yOff = -(self.Size.Y / 2 + 1.5)
+            local bill = Instance.new("BillboardGui")
+            bill.Name = "WeaponInfo"
+            bill.Size = UDim2.new(0, 200, 0, 50)
+            bill.StudsOffset = Vector3.new(0, yOff, 0)
+            bill.AlwaysOnTop = true
+            bill.Parent = obj
+            
+            local nameL = Instance.new("TextLabel")
+            nameL.Size = UDim2.new(1, 0, 0, 25)
+            nameL.BackgroundTransparency = 1
+            nameL.TextColor3 = Color3.new(1, 1, 1)
+            nameL.Text = opt.info.weapon or "Unknown"
+            nameL.Font = Enum.Font.GothamBold
+            nameL.TextSize = 14
+            nameL.Parent = bill
+            
+            local skinL = Instance.new("TextLabel")
+            skinL.Size = UDim2.new(1, 0, 0, 20)
+            skinL.Position = UDim2.new(0, 0, 0, 25)
+            skinL.BackgroundTransparency = 1
+            skinL.TextColor3 = Color3.new(1, 1, 1)
+            skinL.Text = opt.info.skin or "Default"
+            skinL.Font = Enum.Font.Gotham
+            skinL.TextSize = 12
+            skinL.Parent = bill
+            
+            self.Billboard = bill
+            self.NameLabel = nameL
+            self.SkinLabel = skinL
+            
+            WeaponESP.Objects[obj] = self
+            
+            local conn
+            conn = obj.AncestryChanged:Connect(function()
+                if obj.Parent == nil or (Debris and not Debris:IsAncestorOf(obj)) then
+                    self:Remove()
+                    if conn then conn:Disconnect() end
+                end
+            end)
+            table.insert(WeaponESP.Connections, conn)
+            
+            return self
+        end
+        
+        function Box:Remove()
+            if self.Quad then
+                self.Quad.Visible = false
+                self.Quad:Remove()
+                self.Quad = nil
+            end
+            if self.Billboard then
+                self.Billboard:Destroy()
+                self.Billboard = nil
+            end
+            WeaponESP.Objects[self.Object] = nil
+        end
+        
+        function Box:Update()
+            if not self.PrimaryPart or not self.PrimaryPart.Parent then self:Remove() return end
+            if not Debris or not Debris:IsAncestorOf(self.Object) then self:Remove() return end
+            
+            local visible = WeaponESP.Enabled and WeaponESP.Boxes and self.Quad
+            if not visible then
+                if self.Quad then self.Quad.Visible = false end
+                if self.Billboard then self.Billboard.Enabled = false end
+                return
+            else
+                if self.Quad then self.Quad.Visible = true end
+                if self.Billboard then self.Billboard.Enabled = true end
+            end
+            
+            local objPos = self.PrimaryPart:IsA("BasePart") and self.PrimaryPart.Position or self.PrimaryPart:GetPivot().Position
+            local d = getDistance(objPos)
+            local s = math.clamp(30 / math.max(d, 5), 0.3, 1.5)
+            
+            self.Billboard.Size = UDim2.new(0, 200 * s, 0, 50 * s)
+            self.NameLabel.TextSize = 14 * s
+            self.SkinLabel.TextSize = 12 * s
+            
+            local cf = self.PrimaryPart:IsA("BasePart") and self.PrimaryPart.CFrame or self.PrimaryPart:GetPivot()
+            local sz = self.Size
+            local hx, hy, hz = sz.X / 2, sz.Y / 2, sz.Z / 2
+            local corners = {
+                cf * Vector3.new( hx,  hy,  hz), cf * Vector3.new( hx,  hy, -hz),
+                cf * Vector3.new( hx, -hy,  hz), cf * Vector3.new( hx, -hy, -hz),
+                cf * Vector3.new(-hx,  hy,  hz), cf * Vector3.new(-hx,  hy, -hz),
+                cf * Vector3.new(-hx, -hy,  hz), cf * Vector3.new(-hx, -hy, -hz)
+            }
+            
+            local proj, allOn = {}, true
+            for i, p in ipairs(corners) do
+                local v = cam:WorldToViewportPoint(p)
+                if v.Z <= 0 then allOn = false end
+                proj[i] = Vector2.new(v.X, v.Y)
+            end
+            
+            if not allOn then
+                self.Quad.Visible = false
+                return
+            else
+                self.Quad.Visible = true
+            end
+            
+            local minX, maxX, minY, maxY = math.huge, -math.huge, math.huge, -math.huge
+            for _, p in ipairs(proj) do
+                if p.X < minX then minX = p.X end
+                if p.X > maxX then maxX = p.X end
+                if p.Y < minY then minY = p.Y end
+                if p.Y > maxY then maxY = p.Y end
+            end
+            
+            self.Quad.PointA = Vector2.new(maxX, minY)
+            self.Quad.PointB = Vector2.new(minX, minY)
+            self.Quad.PointC = Vector2.new(minX, maxY)
+            self.Quad.PointD = Vector2.new(maxX, maxY)
+            self.Quad.Color = self.Color
+            self.Quad.Thickness = self.Thickness
+        end
+        
+        local function addWeapon(obj)
+            if WeaponESP.Objects[obj] then return end
+            local info = getInfo(obj)
+            if not info or not info.weapon then return end
+            if obj:IsA("BasePart") then
+                local p = obj.Parent
+                if p and p:IsA("Model") and getInfo(p) then return end
+            end
+            local primary = obj:IsA("BasePart") and obj or (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")))
+            if not primary then return end
+            Box.new(obj, { PrimaryPart = primary, Color = WeaponESP.Color, Thickness = WeaponESP.Thickness, info = info })
+        end
+        
+        local function scanAllWeapons()
+            if not Debris then return end
+            for _, o in ipairs(Debris:GetChildren()) do
+                addWeapon(o)
+                if o:IsA("Folder") or o:IsA("Model") then
+                    for _, c in ipairs(o:GetChildren()) do
+                        addWeapon(c)
+                    end
+                end
+            end
+        end
+        
+        local function clearAllWeapons()
+            for _, b in pairs(WeaponESP.Objects) do
+                b:Remove()
+            end
+            WeaponESP.Objects = {}
+            for _, c in ipairs(WeaponESP.Connections) do
+                c:Disconnect()
+            end
+            WeaponESP.Connections = {}
+        end
+        
+        local function initWeaponESP()
+            clearAllWeapons()
+            Debris = findDebris()
+            if not Debris then return end
+            scanAllWeapons()
+            table.insert(WeaponESP.Connections, Debris.DescendantAdded:Connect(function(o)
+                task.wait(0.1)
+                addWeapon(o)
+            end))
+        end
+        
+        table.insert(WeaponESP.Connections, workspace.ChildAdded:Connect(function(c)
+            if c.Name == "Debris" then
+                task.wait(0.2)
+                initWeaponESP()
+            end
+        end))
+        
+        table.insert(WeaponESP.Connections, workspace.ChildRemoved:Connect(function(c)
+            if c == Debris then
+                clearAllWeapons()
+                Debris = nil
+            end
+        end))
+        
+        LocalPlayer.CharacterAdded:Connect(function()
+            task.wait(1.5)
+            initWeaponESP()
+        end)
+        
+        initWeaponESP()
+        
+        -- ========== ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ ==========
+        -- Chams (с поддержкой отображения на себе в Third Person)
+        local function RemoveAdorns(part)
+            if not part then return end
+            for _, child in ipairs(part:GetChildren()) do
+                if child.Name == "Chams" or child.Name == "Glow" then
+                    child:Destroy()
+                end
+            end
+        end
+        
+        local function CreateSimpleCham(part, color, trans)
+            local cham = Instance.new("BoxHandleAdornment")
+            cham.Size = part.Size + Vector3.new(0.05,0.05,0.05)
+            cham.Adornee = part
+            cham.AlwaysOnTop = true
+            cham.ZIndex = 10
+            cham.Color3 = color
+            cham.Transparency = trans or 0
+            cham.Name = "Chams"
+            cham.Parent = part
+            return cham
+        end
+        
+        local function UpdateChams()
+            -- Удаляем все старые чамсы
+            for _, plr in Players:GetPlayers() do
+                local char = plr.Character
+                if char then
+                    for _, part in char:GetChildren() do
+                        if part:IsA("BasePart") then
+                            RemoveAdorns(part)
+                        end
+                    end
+                end
+            end
+            
+            if not _G.Config.ChamsEnabled then return end
+            
+            -- Применяем чамсы к врагам
+            for _, plr in Players:GetPlayers() do
+                if plr ~= LocalPlayer and plr.Character and IsEnemy(plr) then
+                    for _, part in plr.Character:GetChildren() do
+                        if part:IsA("BasePart") and part.Transparency < 1 then
+                            CreateSimpleCham(part, _G.Config.ChamsColor, _G.Config.ChamsTransparency)
+                        end
+                    end
+                end
+            end
+            
+            -- Если включен Third Person, добавляем чамсы на себя
+            if _G.Config.MiscThirdPerson and LocalPlayer.Character then
+                for _, part in LocalPlayer.Character:GetChildren() do
+                    if part:IsA("BasePart") and part.Transparency < 1 then
+                        CreateSimpleCham(part, _G.Config.ChamsColor, _G.Config.ChamsTransparency)
+                    end
+                end
+            end
+        end
+        
+        local CHAMS_UPDATE_RATE = 0.2
+        coroutine.wrap(function()
+            while true do
+                if _G.Config.ChamsEnabled then UpdateChams() end
+                wait(CHAMS_UPDATE_RATE + math.random() * 0.1)
+            end
+        end)()
+        
+        function UpdateChamsFromConfig() UpdateChams() end
+        
+        -- Sky
+        local SkyObject = nil
+        local function UpdateSky()
+            if SkyObject then SkyObject:Destroy(); SkyObject = nil end
+            if not _G.Config.SkyChanger then return end
+            SkyObject = Instance.new("Sky")
+            local assets = SkyAssets[_G.Config.SkyStyle]
+            if assets then
+                SkyObject.SkyboxUp = assets.Up or ""
+                SkyObject.SkyboxDn = assets.Dn or ""
+                SkyObject.SkyboxLf = assets.Lf or assets.Rt or ""
+                SkyObject.SkyboxRt = assets.Rt or assets.Lf or ""
+                SkyObject.SkyboxFt = assets.Ft or assets.Bk or ""
+                SkyObject.SkyboxBk = assets.Bk or assets.Ft or ""
+                SkyObject.Parent = Lighting
+            end
+        end
+        
+        -- Bullet Tracers
+        local TracerConn = nil
+        local function ApplyTracer(obj)
+            if obj:IsA("Trail") then
+                obj.Texture = "rbxassetid://7151778302"
+                obj.WidthScale = NumberSequence.new(50)
+                obj.Lifetime = 4
+                obj.Transparency = NumberSequence.new(0)
+                obj.Color = ColorSequence.new(Color3.fromRGB(0,0,0))
+                obj.LightEmission = 1
+            elseif obj:IsA("Beam") then
+                obj.Color = ColorSequence.new(Color3.fromRGB(0,0,0))
+            end
+        end
+        
+        local function StartTracerLoop()
+            if TracerConn then TracerConn:Disconnect(); TracerConn = nil end
+            if not _G.Config.BulletTracers then return end
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("Trail") or obj:IsA("Beam") then ApplyTracer(obj) end
+            end
+            TracerConn = workspace.DescendantAdded:Connect(function(obj)
+                if obj:IsA("Trail") or obj:IsA("Beam") then ApplyTracer(obj) end
+            end)
+        end
+        
+        -- Smoke Remover
+        local function ToggleSmokeRemover()
+            if SmokeConn then SmokeConn:Disconnect(); SmokeConn = nil end
+            if not _G.Config.SmokeRemover then return end
+            SmokeConn = RunService.Heartbeat:Connect(function()
+                pcall(function()
+                    if workspace:FindFirstChild("Debris") then
+                        for _, folder in workspace.Debris:GetChildren() do
+                            if folder.Name:match("Voxel") then
+                                folder:ClearAllChildren()
+                                folder:Destroy()
+                            end
+                        end
+                    end
+                end)
+            end)
+        end
+        
+        -- Flashbang Remover
+        local function ToggleFlashbang()
+            if FlashConn then FlashConn:Disconnect(); FlashConn = nil end
+            if not _G.Config.FlashbangRemover then return end
+            FlashConn = RunService.Heartbeat:Connect(function()
+                local gui = LocalPlayer.PlayerGui:FindFirstChild("FlashbangEffect")
+                if gui then gui:Destroy() end
+                local eff = Lighting:FindFirstChild("FlashbangColorCorrection")
+                if eff then eff:Destroy() end
+            end)
+        end
+        
+        -- Boost Speed
+        local BOOST_SPEED = 25
+        local function ToggleBoost()
+            if boostConn then boostConn:Disconnect(); boostConn = nil end
+            if _G.Config.BoostSpeed then
+                boostConn = RunService.RenderStepped:Connect(function()
+                    local char = LocalPlayer.Character
+                    if char then
+                        local humanoid = char:FindFirstChildOfClass("Humanoid")
+                        if humanoid and humanoid.WalkSpeed ~= BOOST_SPEED then
+                            humanoid.WalkSpeed = BOOST_SPEED
+                        end
+                    end
+                end)
+            else
+                local char = LocalPlayer.Character
+                if char then
+                    local h = char:FindFirstChildOfClass("Humanoid")
+                    if h then h.WalkSpeed = 16 end
+                end
+            end
+        end
+        
+        -- Early Run
+        local function ToggleEarlyRun()
+            if EarlyRunConn then EarlyRunConn:Disconnect(); EarlyRunConn = nil end
+            if not _G.Config.EarlyRun then return end
+            pcall(function()
+                local timerNames = {"RoundStart","Timer","StartDelay","RoundDelay","PreRound","FreezeTime"}
+                for _, name in ipairs(timerNames) do
+                    local obj = Lighting:FindFirstChild(name) or Workspace:FindFirstChild(name)
+                    if obj then obj:Destroy() end
+                end
+            end)
+            EarlyRunConn = RunService.Heartbeat:Connect(function()
+                local char = LocalPlayer.Character
+                if char then
+                    local h = char:FindFirstChildOfClass("Humanoid")
+                    if h and h.WalkSpeed == 0 then
+                        if _G.Config.BoostSpeed then h.WalkSpeed = BOOST_SPEED else h.WalkSpeed = 16 end
+                        local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+                        if hrp then
+                            local moveDir = Camera.CFrame.LookVector * Vector3.new(1,0,1)
+                            if moveDir.Magnitude > 0.1 then
+                                hrp.CFrame = hrp.CFrame + moveDir.Unit * 0.3
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+        
+        -- Wallbang
+        local buyAreas = {}
+        local function UpdateBuyAreas()
+            buyAreas = {}
+            for _, area in ipairs(CollectionService:GetTagged("BuyArea")) do
+                buyAreas[area] = true
+            end
+        end
+        UpdateBuyAreas()
+        CollectionService:GetInstanceAddedSignal("BuyArea"):Connect(function(area) buyAreas[area] = true end)
+        CollectionService:GetInstanceRemovedSignal("BuyArea"):Connect(function(area) buyAreas[area] = nil end)
+        
+        local protectedKeywords = {
+            "floor","cityfloor","baseplate","ground","spawn","stair","stairs","ramp","platform",
+            "road","sidewalk","dirt","grass","terrain","lobby","waiting","shop","vendor","buy","purchase","ui","gui"
+        }
+        
+        local function ShouldProtect(obj)
+            if buyAreas[obj] then return true end
+            if obj:GetAttribute("Team") then return true end
+            local name = string.lower(obj.Name)
+            for _, word in ipairs(protectedKeywords) do
+                if name:find(word) then return true end
+            end
+            return false
+        end
+        
+        local function NewWallbangCheck(obj)
+            if not obj:IsA("BasePart") then return end
+            if obj:IsDescendantOf(LocalPlayer.Character) then return end
+            if ShouldProtect(obj) then return end
+            if obj.Size.Y > 3 then
+                pcall(function() obj:Destroy() end)
+            end
+        end
+        
+        local function InitialWallbangCleanup()
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and not obj:IsDescendantOf(LocalPlayer.Character) then
+                    if not ShouldProtect(obj) and obj.Size.Y > 3 then
+                        pcall(function() obj:Destroy() end)
+                    end
+                end
+            end
+        end
+        
+        local function ToggleWallbang()
+            if wallbangAddedConn then
+                wallbangAddedConn:Disconnect()
+                wallbangAddedConn = nil
+            end
+            if _G.Config.Wallbang then
+                InitialWallbangCleanup()
+                wallbangAddedConn = workspace.DescendantAdded:Connect(NewWallbangCheck)
+            end
+        end
+        
+        -- Hitbox Expander
+        local function UpdateHitboxes()
+            if not _G.Config.HitboxExpander then return end
+            if tick() - lastHitboxUpdate < 0.6 then return end
+            lastHitboxUpdate = tick()
+            task.spawn(function()
+                local scale = 1.5
+                for _, plr in ipairs(Players:GetPlayers()) do
+                    if plr ~= LocalPlayer and IsEnemy(plr) then
+                        local char = plr.Character
+                        if not char then continue end
+                        local parts = {
+                            char:FindFirstChild("Head"),
+                            char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso"),
+                            char:FindFirstChild("LowerTorso"),
+                            char:FindFirstChild("HumanoidRootPart")
+                        }
+                        for _, part in ipairs(parts) do
+                            if part and part:IsA("BasePart") then
+                                if not part:GetAttribute("OriginalSize") then
+                                    part:SetAttribute("OriginalSize", part.Size)
+                                end
+                                part.Size = part:GetAttribute("OriginalSize") * scale
+                                part.Transparency = 0.7
+                                part.CanCollide = false
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+        
+        -- FPS Counter
+        if DrawingSupported then
+            FPSCounterText = Drawing.new("Text")
+            FPSCounterText.Text = "FPS: 60"
+            FPSCounterText.Size = 14
+            FPSCounterText.Color = Color3.new(0,1,0)
+            FPSCounterText.Outline = true
+            FPSCounterText.Position = Vector2.new(Camera.ViewportSize.X-80,10)
+            FPSCounterText.Visible = false
+        end
+        
+        local function UpdateWatermarkAndFPS()
+            if FPSCounterText then
+                FPSCounterText.Position = Vector2.new(Camera.ViewportSize.X-80,10)
+                FPSCounterText.Visible = _G.Config.FPScounter
+                if _G.Config.FPScounter then
+                    frameCount = frameCount + 1
+                    local now = tick()
+                    if now - lastFPSUpdate >= 1 then
+                        currentFPS = frameCount
+                        frameCount = 0
+                        lastFPSUpdate = now
+                    end
+                    FPSCounterText.Text = "FPS: " .. currentFPS
+                end
+            end
+        end
+        
+        -- Third Person
+        local function updateThirdPerson()
+            if _G.Config.MiscThirdPerson then
+                Camera.CameraType = Enum.CameraType.Custom
+                local character = LocalPlayer.Character
+                if character and character:FindFirstChild("HumanoidRootPart") then
+                    local rootPart = character.HumanoidRootPart
+                    
+                    local mouseDelta = UIS:GetMouseDelta()
+                    camYaw = camYaw - mouseDelta.X * 0.003
+                    camPitch = math.clamp(camPitch - mouseDelta.Y * 0.003, -math.rad(80), math.rad(80))
+                    
+                    local offset = Vector3.new(
+                        math.sin(camYaw) * math.cos(camPitch),
+                        math.sin(camPitch),
+                        math.cos(camYaw) * math.cos(camPitch)
+                    ) * camDistance
+                    
+                    local camPos = rootPart.Position + offset
+                    Camera.CFrame = CFrame.lookAt(camPos, rootPart.Position)
+                end
+            else
+                Camera.CameraType = Enum.CameraType.Custom
+            end
+        end
+        
+        -- Anti Aim
+        local function updateAntiAim()
+            if not _G.Config.MiscAntiAim then return end
+            local char = LocalPlayer.Character
+            if not char then return end
+            local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+            if root then
+                local lookAt = root.Position - Camera.CFrame.LookVector
+                root.CFrame = CFrame.lookAt(root.Position, lookAt)
+            end
+        end
+        
+        -- ========== ТВОЙ ПОЛНЫЙ СКИНЧЕНДЖЕР ==========
+        local SkinChangerEnabled = _G.Config.SkinChangerEnabled
+        local SelectedSkins = _G.Config.SelectedSkins
+        local COOLDOWN = 0.1
+        local WEAR = "Factory New"
+        
+        local CT_ONLY = {
+            ["USP-S"] = true, ["Five-SeveN"] = true, ["MP9"] = true,
+            ["FAMAS"] = true, ["M4A1-S"] = true, ["M4A4"] = true, ["AUG"] = true
+        }
+        local SHARED = {
+            ["P250"] = true, ["Desert Eagle"] = true, ["Dual Berettas"] = true,
+            ["Negev"] = true, ["P90"] = true, ["Nova"] = true, ["XM1014"] = true,
+            ["AWP"] = true, ["SSG 08"] = true
+        }
+        local KNIVES = {
+            ["Karambit"] = true, ["Butterfly Knife"] = true, ["M9 Bayonet"] = true,
+            ["Flip Knife"] = true, ["Gut Knife"] = true, ["T Knife"] = true, ["CT Knife"] = true
+        }
+        local GLOVES = {
+            ["Sports Gloves"] = true
+        }
+        
+        local SkinsFolder = ReplicatedStorage:FindFirstChild("Assets") and ReplicatedStorage.Assets:FindFirstChild("Skins")
+        if not SkinsFolder then
+            SkinsFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Skins")
+        end
+        local Characters = workspace:WaitForChild("Characters")
+        
+        local IgnoreFolders = {
+            ["HE Grenade"] = true, ["Incendiary Grenade"] = true, ["Molotov"] = true,
+            ["Smoke Grenade"] = true, ["Flashbang"] = true, ["Decoy Grenade"] = true,
+            ["C4"] = true, ["CT Glove"] = true, ["T Glove"] = true
+        }
+        
+        local function IsPlayerAliveForSkin()
+            local t = Characters:FindFirstChild("Terrorists")
+            local ct = Characters:FindFirstChild("Counter-Terrorists")
+            return (t and t:FindFirstChild(LocalPlayer.Name)) or (ct and ct:FindFirstChild(LocalPlayer.Name))
+        end
+        
+        local function applyWeaponSkin(model)
+            if not model or not SkinChangerEnabled or not IsPlayerAliveForSkin() then return end
+            local skinName = SelectedSkins[model.Name]
+            if not skinName then return end
+            pcall(function()
+                local skinFolder = SkinsFolder:FindFirstChild(model.Name)
+                if not skinFolder then return end
+                local skinType = skinFolder:FindFirstChild(skinName)
+                local sourceFolder = skinType and skinType:FindFirstChild("Camera") and skinType.Camera:FindFirstChild(WEAR)
+                if not sourceFolder then return end
+                
+                for _, obj in Camera:GetChildren() do
+                    local left = obj:FindFirstChild("Left Arm")
+                    local right = obj:FindFirstChild("Right Arm")
+                    if left or right then
+                        local gloveFolder = SkinsFolder:FindFirstChild("Sports Gloves")
+                        local gloveSkin = gloveFolder and gloveFolder:FindFirstChild(SelectedSkins["Sports Gloves"])
+                        local gloveSource = gloveSkin and gloveSkin:FindFirstChild("Camera") and gloveSkin.Camera:FindFirstChild(WEAR)
+                        if gloveSource then
+                            for _, side in {"Left Arm", "Right Arm"} do
+                                local arm = obj:FindFirstChild(side)
+                                local src = gloveSource:FindFirstChild(side)
+                                if arm and src then
+                                    local gloveMesh = arm:FindFirstChild("Glove")
+                                    if gloveMesh then
+                                        local existing = gloveMesh:FindFirstChildOfClass("SurfaceAppearance")
+                                        if existing then existing:Destroy() end
+                                        local clone = src:Clone()
+                                        clone.Name = "SurfaceAppearance"
+                                        clone.Parent = gloveMesh
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                if not GLOVES[model.Name] then
+                    local weaponFolder = model:FindFirstChild("Weapon")
+                    if weaponFolder then
+                        for _, part in weaponFolder:GetDescendants() do
+                            if part:IsA("BasePart") then
+                                local newSkin = sourceFolder:FindFirstChild(part.Name)
+                                if newSkin then
+                                    local existing = part:FindFirstChildOfClass("SurfaceAppearance")
+                                    if existing then existing:Destroy() end
+                                    local clone = newSkin:Clone()
+                                    clone.Name = "SurfaceAppearance"
+                                    clone.Parent = part
+                                end
+                            end
+                        end
+                    end
+                end
+                model:SetAttribute("SkinApplied", skinName)
+            end)
+        end
+        
+        Camera.ChildAdded:Connect(function(obj)
+            if not SkinChangerEnabled or not IsPlayerAliveForSkin() then return end
+            task.wait(COOLDOWN)
+            applyWeaponSkin(obj)
+        end)
+        
+        task.spawn(function()
+            while true do
+                task.wait(0.5)
+                if SkinChangerEnabled and IsPlayerAliveForSkin() then
+                    for _, obj in Camera:GetChildren() do
+                        if SelectedSkins[obj.Name] and obj:GetAttribute("SkinApplied") ~= SelectedSkins[obj.Name] then
+                            applyWeaponSkin(obj)
+                        end
+                    end
+                end
+            end
+        end)
+        
+        -- ========== СОЗДАНИЕ МЕНЮ ==========
+        local MenuGui = Instance.new("ScreenGui")
+        MenuGui.Name = "FentMenu"
+        MenuGui.Parent = game:GetService("CoreGui")
+        MenuGui.ResetOnSpawn = false
+        MenuGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        MenuGui.Enabled = true
+        
+        local MainFrame = Instance.new("Frame")
+        MainFrame.Name = "MainFrame"
+        MainFrame.Size = UDim2.new(0, 650, 0, 500)
+        MainFrame.Position = UDim2.new(0.5, -325, 0.5, -250)
+        MainFrame.BackgroundColor3 = Color3.fromRGB(17, 17, 17)
+        MainFrame.BorderColor3 = Color3.fromRGB(45, 45, 45)
+        MainFrame.BorderSizePixel = 1
+        MainFrame.Parent = MenuGui
+        MainFrame.Active = true
+        MainFrame.Draggable = true
+        
+        local Outline = Instance.new("Frame")
+        Outline.Size = UDim2.new(1, 4, 1, 4)
+        Outline.Position = UDim2.new(0, -2, 0, -2)
+        Outline.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        Outline.ZIndex = 0
+        Outline.Parent = MainFrame
+        
+        local AccentBar = Instance.new("Frame")
+        AccentBar.Size = UDim2.new(1, 0, 0, 2)
+        AccentBar.BackgroundColor3 = Color3.fromRGB(150, 200, 60)
+        AccentBar.BorderSizePixel = 0
+        AccentBar.ZIndex = 2
+        AccentBar.Parent = MainFrame
+        
+        local Sidebar = Instance.new("Frame")
+        Sidebar.Size = UDim2.new(0, 130, 1, -2)
+        Sidebar.Position = UDim2.new(0, 0, 0, 2)
+        Sidebar.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+        Sidebar.BorderSizePixel = 0
+        Sidebar.Parent = MainFrame
+        
+        local SidebarLayout = Instance.new("UIListLayout")
+        SidebarLayout.Padding = UDim.new(0, 5)
+        SidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        SidebarLayout.Parent = Sidebar
+        
+        local TopSpacer = Instance.new("Frame")
+        TopSpacer.Size = UDim2.new(1, 0, 0, 10)
+        TopSpacer.BackgroundTransparency = 1
+        TopSpacer.LayoutOrder = 0
+        TopSpacer.Parent = Sidebar
+        
+        local TabContainer = Instance.new("Frame")
+        TabContainer.Size = UDim2.new(1, -145, 1, -45)
+        TabContainer.Position = UDim2.new(0, 140, 0, 35)
+        TabContainer.BackgroundTransparency = 1
+        TabContainer.Parent = MainFrame
+        
+        local Tabs = {
+            AIM = Instance.new("ScrollingFrame"),
+            ESP = Instance.new("ScrollingFrame"),
+            MISC = Instance.new("ScrollingFrame"),
+            VISUALS = Instance.new("ScrollingFrame"),
+            SKINS = Instance.new("ScrollingFrame"),
+            COLORS = Instance.new("ScrollingFrame"),
+            CONFIGS = Instance.new("ScrollingFrame"),
+        }
+        
+        for name, frame in pairs(Tabs) do
+            frame.Size = UDim2.new(1, 0, 1, 0)
+            frame.BackgroundTransparency = 1
+            frame.Visible = (name == "AIM")
+            frame.ScrollBarThickness = 0
+            frame.Parent = TabContainer
+            local layout = Instance.new("UIListLayout")
+            layout.Padding = UDim.new(0, 12)
+            layout.Parent = frame
+        end
+        
+        local Title = Instance.new("TextLabel")
+        Title.Text = "FENT"
+        Title.Size = UDim2.new(0, 100, 0, 25)
+        Title.Position = UDim2.new(0, 10, 0, 4)
+        Title.BackgroundTransparency = 1
+        Title.TextColor3 = Color3.new(1, 1, 1)
+        Title.Font = Enum.Font.Code
+        Title.TextSize = 14
+        Title.TextXAlignment = Enum.TextXAlignment.Left
+        Title.Parent = MainFrame
+        
+        local function CreateTabBtn(name)
+            local Btn = Instance.new("TextButton")
+            Btn.Name = name.."TabButton"
+            Btn.Size = UDim2.new(1, -20, 0, 35)
+            Btn.BackgroundTransparency = 1
+            Btn.Text = name
+            Btn.Font = Enum.Font.Code
+            Btn.TextSize = 14
+            Btn.TextColor3 = Color3.new(1, 1, 1)
+            Btn.Parent = Sidebar
+            Btn.MouseButton1Click:Connect(function()
+                for tName, tFrame in pairs(Tabs) do
+                    tFrame.Visible = (tName == name)
+                end
+            end)
+        end
+        CreateTabBtn("AIM")
+        CreateTabBtn("ESP")
+        CreateTabBtn("MISC")
+        CreateTabBtn("VISUALS")
+        CreateTabBtn("SKINS")
+        CreateTabBtn("COLORS")
+        CreateTabBtn("CONFIGS")
+        
+        UI_Elements = {}
+        
+        function RefreshAllUI()
+            for key, elements in pairs(UI_Elements) do
+                local value = _G.Config[key]
+                for _, el in ipairs(elements) do
+                    if el.Type == "Toggle" then
+                        el.Box.BackgroundColor3 = value and Color3.fromRGB(150,200,60) or Color3.fromRGB(40,40,40)
+                    elseif el.Type == "Slider" then
+                        local per = (value - el.Min)/(el.Max-el.Min)
+                        el.Fill.Size = UDim2.new(per,0,1,0)
+                        el.Label.Text = el.Name..": "..tostring(value)
+                    elseif el.Type == "Dropdown" then
+                        if typeof(value)=="EnumItem" then
+                            local str = tostring(value):gsub("Enum.KeyCode.",""):gsub("Enum.UserInputType.","")
+                            el.Btn.Text = el.Name..": "..str
+                        else
+                            el.Btn.Text = el.Name..": "..tostring(value)
+                        end
+                    elseif el.Type == "ColorPick" then
+                        el.Btn.TextColor3 = value
+                    end
+                end
+            end
+        end
+        
+        -- Функции создания элементов (твои)
+        local function CreateToggle(parent, name, config_key, callback)
+            local TglBtn = Instance.new("TextButton")
+            TglBtn.Size = UDim2.new(1, 0, 0, 20)
+            TglBtn.BackgroundTransparency = 1
+            TglBtn.Text = ""
+            TglBtn.Parent = parent
+            
+            local Box = Instance.new("Frame")
+            Box.Size = UDim2.new(0, 10, 0, 10)
+            Box.Position = UDim2.new(0, 5, 0.5, -5)
+            Box.BackgroundColor3 = _G.Config[config_key] and Color3.fromRGB(150, 200, 60) or Color3.fromRGB(40, 40, 40)
+            Box.BorderSizePixel = 1
+            Box.Parent = TglBtn
+            
+            local Label = Instance.new("TextLabel")
+            Label.Size = UDim2.new(1, -25, 1, 0)
+            Label.Position = UDim2.new(0, 25, 0, 0)
+            Label.Text = name
+            Label.TextColor3 = Color3.new(1, 1, 1)
+            Label.Font = Enum.Font.Code
+            Label.TextSize = 13
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.BackgroundTransparency = 1
+            Label.Parent = TglBtn
+            
+            if not UI_Elements[config_key] then
+                UI_Elements[config_key] = {}
+            end
+            table.insert(UI_Elements[config_key], {
+                Type = "Toggle",
+                Box = Box,
+                Label = Label
+            })
+            
+            TglBtn.MouseButton1Click:Connect(function()
+                _G.Config[config_key] = not _G.Config[config_key]
+                Box.BackgroundColor3 = _G.Config[config_key] and Color3.fromRGB(150, 200, 60) or Color3.fromRGB(40, 40, 40)
+                if callback then callback(_G.Config[config_key]) end
+            end)
+            
+            return TglBtn
+        end
+        
+        local function CreateSlider(parent, name, min, max, config_key, callback)
+            local SldFrame = Instance.new("Frame")
+            SldFrame.Size = UDim2.new(1, -10, 0, 35)
+            SldFrame.BackgroundTransparency = 1
+            SldFrame.Parent = parent
+            
+            local Label = Instance.new("TextLabel")
+            Label.Text = name .. ": " .. _G.Config[config_key]
+            Label.Size = UDim2.new(1, 0, 0, 15)
+            Label.TextColor3 = Color3.fromRGB(200, 200, 200)
+            Label.Font = Enum.Font.Code
+            Label.TextSize = 12
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.BackgroundTransparency = 1
+            Label.Parent = SldFrame
+            
+            local Bar = Instance.new("Frame")
+            Bar.Size = UDim2.new(1, 0, 0, 5)
+            Bar.Position = UDim2.new(0, 0, 0, 22)
+            Bar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+            Bar.BorderSizePixel = 1
+            Bar.Parent = SldFrame
+            
+            local Fill = Instance.new("Frame")
+            Fill.Size = UDim2.new((_G.Config[config_key] - min) / (max - min), 0, 1, 0)
+            Fill.BackgroundColor3 = Color3.fromRGB(150, 200, 60)
+            Fill.BorderSizePixel = 0
+            Fill.Parent = Bar
+            
+            if not UI_Elements[config_key] then
+                UI_Elements[config_key] = {}
+            end
+            table.insert(UI_Elements[config_key], {
+                Type = "Slider",
+                Name = name,
+                Label = Label,
+                Fill = Fill,
+                Max = max,
+                Min = min
+            })
+            
+            local function UpdateSlider(input)
+                local per = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
+                local val = math.floor(min + (max - min) * per)
+                Fill.Size = UDim2.new(per, 0, 1, 0)
+                Label.Text = name .. ": " .. val
+                _G.Config[config_key] = val
+                if callback then callback(val) end
+            end
+            
+            local draggingBar = false
+            Bar.InputBegan:Connect(function(i)
+                if i.UserInputType == Enum.UserInputType.MouseButton1 then
+                    draggingBar = true
+                    UpdateSlider(i)
+                end
+            end)
+            UIS.InputEnded:Connect(function(i)
+                if i.UserInputType == Enum.UserInputType.MouseButton1 then
+                    draggingBar = false
+                end
+            end)
+            UIS.InputChanged:Connect(function(i)
+                if draggingBar and i.UserInputType == Enum.UserInputType.MouseMovement then
+                    UpdateSlider(i)
+                end
+            end)
+            
+            return SldFrame
+        end
+        
+        local function CreateDropdown(parent, name, options, config_key, callback)
+            local Btn = Instance.new("TextButton")
+            Btn.Size = UDim2.new(1, 0, 0, 20)
+            Btn.BackgroundTransparency = 1
+            Btn.Font = Enum.Font.Code
+            Btn.TextSize = 13
+            Btn.TextXAlignment = Enum.TextXAlignment.Left
+            Btn.TextColor3 = Color3.new(1, 1, 1)
+            Btn.Parent = parent
+            
+            local function UpdateText()
+                if typeof(_G.Config[config_key]) == "EnumItem" then
+                    local str = tostring(_G.Config[config_key]):gsub("Enum.KeyCode.",""):gsub("Enum.UserInputType.","")
+                    Btn.Text = name .. ": " .. str
+                else
+                    Btn.Text = name .. ": " .. tostring(_G.Config[config_key])
+                end
+            end
+            UpdateText()
+            
+            if not UI_Elements[config_key] then
+                UI_Elements[config_key] = {}
+            end
+            table.insert(UI_Elements[config_key], {
+                Type = "Dropdown",
+                Name = name,
+                Btn = Btn
+            })
+            
+            Btn.MouseButton1Click:Connect(function()
+                if typeof(_G.Config[config_key]) == "EnumItem" then
+                    local keys = {Enum.KeyCode.X, Enum.KeyCode.V, Enum.KeyCode.C, Enum.UserInputType.MouseButton2}
+                    local idx = 1
+                    for i, k in ipairs(keys) do
+                        if k == _G.Config[config_key] then
+                            idx = i + 1
+                            if idx > #keys then idx = 1 end
+                            break
+                        end
+                    end
+                    _G.Config[config_key] = keys[idx]
+                else
+                    local idx = 1
+                    for i, opt in ipairs(options) do
+                        if opt == _G.Config[config_key] then
+                            idx = i + 1
+                            if idx > #options then idx = 1 end
+                            break
+                        end
+                    end
+                    _G.Config[config_key] = options[idx]
+                end
+                UpdateText()
+                if callback then callback(_G.Config[config_key]) end
+            end)
+            
+            return Btn
+        end
+        
+        local function CreateColorPick(parent, name, config_key)
+            local Btn = Instance.new("TextButton")
+            Btn.Size = UDim2.new(1, 0, 0, 20)
+            Btn.BackgroundTransparency = 1
+            Btn.Font = Enum.Font.Code
+            Btn.TextSize = 13
+            Btn.TextXAlignment = Enum.TextXAlignment.Left
+            Btn.Text = name .. ": ■"
+            Btn.TextColor3 = _G.Config[config_key]
+            Btn.Parent = parent
+            
+            if not UI_Elements[config_key] then
+                UI_Elements[config_key] = {}
+            end
+            table.insert(UI_Elements[config_key], {
+                Type = "ColorPick",
+                Btn = Btn
+            })
+            
+            Btn.MouseButton1Click:Connect(function()
+                local colors = {
+                    Color3.fromRGB(255,70,150),
+                    Color3.fromRGB(255,0,0),
+                    Color3.fromRGB(0,255,0),
+                    Color3.fromRGB(0,0,255),
+                    Color3.fromRGB(255,255,0),
+                    Color3.fromRGB(255,255,255)
+                }
+                local idx = 1
+                for i, col in ipairs(colors) do
+                    if col == _G.Config[config_key] then
+                        idx = i + 1
+                        if idx > #colors then idx = 1 end
+                        break
+                    end
+                end
+                _G.Config[config_key] = colors[idx]
+                Btn.TextColor3 = _G.Config[config_key]
+            end)
+        end
+        
+        local function CreateButton(parent, name, callback)
+            local Btn = Instance.new("TextButton")
+            Btn.Size = UDim2.new(1, -10, 0, 25)
+            Btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            Btn.BorderSizePixel = 1
+            Btn.BorderColor3 = Color3.fromRGB(80, 80, 80)
+            Btn.Text = name
+            Btn.Font = Enum.Font.Code
+            Btn.TextSize = 12
+            Btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            Btn.Parent = parent
+            
+            Btn.MouseEnter:Connect(function()
+                Btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            end)
+            Btn.MouseLeave:Connect(function()
+                Btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            end)
+            Btn.MouseButton1Click:Connect(callback)
+            
+            return Btn
+        end
+        
+        -- Заполнение вкладок
+        -- AIM
+        CreateToggle(Tabs.AIM, L("AimEnabled"), "SilentAim")
+        CreateDropdown(Tabs.AIM, L("AimPart"), aimParts, "AimPart")
+        CreateSlider(Tabs.AIM, L("FOV"), 10, 500, "Fov")
+        CreateSlider(Tabs.AIM, L("HitChance"), 1, 100, "HitChance")
+        CreateSlider(Tabs.AIM, L("MissChance"), 0, 100, "MissChance")
+        CreateDropdown(Tabs.AIM, L("MissPart"), {"Torso","HumanoidRootPart","Head"}, "MissPart")
+        CreateToggle(Tabs.AIM, L("WallCheck"), "AimbotUseVisibleCheck")
+        CreateToggle(Tabs.AIM, L("ShowFOV"), "ShowFov")
+        CreateColorPick(Tabs.AIM, L("ESPColor"), "ESPColor")
+        
+        -- ESP
+        CreateToggle(Tabs.ESP, L("ESPEnabled"), "Esp")
+        CreateToggle(Tabs.ESP, L("ESPBox"), "EspBoxes")
+        CreateSlider(Tabs.ESP, L("BoxThickness"), 1, 5, "ESPBoxThickness")
+        CreateToggle(Tabs.ESP, L("ESPName"), "EspNames")
+        CreateSlider(Tabs.ESP, L("NameSize"), 10, 20, "ESPNameSize")
+        CreateToggle(Tabs.ESP, L("ESPHealth"), "ESPHealth")
+        CreateToggle(Tabs.ESP, L("HealthBar"), "ESPHealthBar")
+        CreateToggle(Tabs.ESP, L("ESPDistance"), "EspDistance")
+        CreateToggle(Tabs.ESP, L("ESPWeapon"), "ESPWeapon")
+        CreateSlider(Tabs.ESP, L("DistanceSize"), 10, 20, "ESPDistanceSize")
+        CreateSlider(Tabs.ESP, L("MaxDistance"), 100, 2000, "ESPMaxDistance")
+        
+        -- MISC
+        CreateToggle(Tabs.MISC, L("BunnyHop"), "MiscBhop")
+        CreateToggle(Tabs.MISC, L("BoostSpeed"), "BoostSpeed", ToggleBoost)
+        CreateToggle(Tabs.MISC, L("EarlyRun"), "EarlyRun", ToggleEarlyRun)
+        CreateToggle(Tabs.MISC, L("Wallbang"), "Wallbang", ToggleWallbang)
+        CreateToggle(Tabs.MISC, L("FlashbangRemover"), "FlashbangRemover", ToggleFlashbang)
+        CreateToggle(Tabs.MISC, L("SmokeRemover"), "SmokeRemover", ToggleSmokeRemover)
+        CreateToggle(Tabs.MISC, L("HitboxExpander"), "HitboxExpander")
+        CreateToggle(Tabs.MISC, L("ThirdPerson"), "MiscThirdPerson", UpdateKeybindDisplay)
+        CreateToggle(Tabs.MISC, L("AntiAim"), "MiscAntiAim", UpdateKeybindDisplay)
+        CreateToggle(Tabs.MISC, L("InfiniteJump"), "InfiniteJump")
+        CreateToggle(Tabs.MISC, L("WeaponNameESP"), "WeaponNameESP", function(val) WeaponESP.Enabled = val end)
+        
+        -- VISUALS
+        CreateToggle(Tabs.VISUALS, L("ChamsEnabled"), "ChamsEnabled", UpdateChamsFromConfig)
+        CreateColorPick(Tabs.VISUALS, L("ChamsColor"), "ChamsColor")
+        CreateSlider(Tabs.VISUALS, L("ChamsTransparency"), 0, 1, "ChamsTransparency", UpdateChamsFromConfig)
+        CreateToggle(Tabs.VISUALS, L("BulletTracers"), "BulletTracers", StartTracerLoop)
+        CreateToggle(Tabs.VISUALS, L("SkyChanger"), "SkyChanger", UpdateSky)
+        CreateDropdown(Tabs.VISUALS, L("SkyStyle"), SkyStyles, "SkyStyle", UpdateSky)
+        
+        -- SKINS
+        CreateToggle(Tabs.SKINS, L("EnableSkinChanger"), "SkinChangerEnabled", function(val) SkinChangerEnabled = val end)
+        CreateToggle(Tabs.SKINS, L("CustomKnifeEnabled"), "CustomKnifeEnabled")
+        CreateDropdown(Tabs.SKINS, L("SelectKnife"), {"Butterfly Knife","Karambit","M9 Bayonet","Flip Knife","Gut Knife"}, "SelectedKnife")
+        
+        -- COLORS
+        CreateColorPick(Tabs.COLORS, L("BoxColor"), "ESPBoxColor")
+        CreateColorPick(Tabs.COLORS, L("GlowColor"), "ESPGlowColor")
+        CreateColorPick(Tabs.COLORS, L("NameColor"), "ESPNameColor")
+        CreateColorPick(Tabs.COLORS, L("DistanceColor"), "ESPDistanceColor")
+        CreateColorPick(Tabs.COLORS, L("EnemyColor"), "EnemyColor")
+        CreateColorPick(Tabs.COLORS, L("TeammateColor"), "TeammateColor")
+        CreateColorPick(Tabs.COLORS, L("HighlightColor"), "HighlightColor")
+        CreateColorPick(Tabs.COLORS, L("ESPColor"), "ESPColor")
+        
+        -- CONFIGS
+        local configListContainer = Instance.new("Frame")
+        configListContainer.Size = UDim2.new(1, -10, 0, 200)
+        configListContainer.Position = UDim2.new(0, 5, 0, 80)
+        configListContainer.BackgroundTransparency = 1
+        configListContainer.Parent = Tabs.CONFIGS
+        
+        local configListLayout = Instance.new("UIListLayout")
+        configListLayout.Padding = UDim.new(0, 5)
+        configListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        configListLayout.Parent = configListContainer
+        
+        local function RefreshConfigList()
+            configListContainer:ClearAllChildren()
+            local configs = ListConfigs()
+            
+            local TitleLabel = Instance.new("TextLabel")
+            TitleLabel.Size = UDim2.new(1, 0, 0, 20)
+            TitleLabel.Text = L("SavedConfigs")
+            TitleLabel.TextColor3 = Color3.new(1, 1, 1)
+            TitleLabel.Font = Enum.Font.Code
+            TitleLabel.TextSize = 13
+            TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+            TitleLabel.BackgroundTransparency = 1
+            TitleLabel.Parent = configListContainer
+            
+            if #configs == 0 then
+                local empty = Instance.new("TextLabel")
+                empty.Size = UDim2.new(1, 0, 0, 20)
+                empty.Text = L("NoConfigs")
+                empty.TextColor3 = Color3.fromRGB(150,150,150)
+                empty.Font = Enum.Font.Code
+                empty.TextSize = 12
+                empty.TextXAlignment = Enum.TextXAlignment.Left
+                empty.BackgroundTransparency = 1
+                empty.Parent = configListContainer
+            else
+                for _, configName in ipairs(configs) do
+                    local item = Instance.new("Frame")
+                    item.Size = UDim2.new(1, 0, 0, 30)
+                    item.BackgroundTransparency = 1
+                    item.Parent = configListContainer
+                    
+                    local nameLabel = Instance.new("TextLabel")
+                    nameLabel.Size = UDim2.new(0.5, -5, 1, 0)
+                    nameLabel.Text = configName
+                    nameLabel.TextColor3 = Color3.new(1,1,1)
+                    nameLabel.Font = Enum.Font.Code
+                    nameLabel.TextSize = 12
+                    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+                    nameLabel.BackgroundTransparency = 1
+                    nameLabel.Parent = item
+                    
+                    local loadBtn = Instance.new("TextButton")
+                    loadBtn.Size = UDim2.new(0.2, -2, 0.8, 0)
+                    loadBtn.Position = UDim2.new(0.5, 2, 0.1, 0)
+                    loadBtn.Text = L("LoadConfig")
+                    loadBtn.Font = Enum.Font.Code
+                    loadBtn.TextSize = 11
+                    loadBtn.TextColor3 = Color3.new(1,1,1)
+                    loadBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+                    loadBtn.BorderSizePixel = 1
+                    loadBtn.Parent = item
+                    loadBtn.MouseButton1Click:Connect(function() LoadConfig(configName) end)
+                    
+                    local deleteBtn = Instance.new("TextButton")
+                    deleteBtn.Size = UDim2.new(0.2, -2, 0.8, 0)
+                    deleteBtn.Position = UDim2.new(0.7, 2, 0.1, 0)
+                    deleteBtn.Text = L("DeleteConfig")
+                    deleteBtn.Font = Enum.Font.Code
+                    deleteBtn.TextSize = 11
+                    deleteBtn.TextColor3 = Color3.fromRGB(255,100,100)
+                    deleteBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+                    deleteBtn.BorderSizePixel = 1
+                    deleteBtn.Parent = item
+                    deleteBtn.MouseButton1Click:Connect(function() DeleteConfig(configName); RefreshConfigList() end)
+                end
+            end
+        end
+        
+        local saveInput = Instance.new("TextBox")
+        saveInput.Size = UDim2.new(1, -10, 0, 25)
+        saveInput.Position = UDim2.new(0, 5, 0, 5)
+        saveInput.PlaceholderText = L("ConfigName")
+        saveInput.Text = ""
+        saveInput.Font = Enum.Font.Code
+        saveInput.TextSize = 12
+        saveInput.TextColor3 = Color3.new(1,1,1)
+        saveInput.BackgroundColor3 = Color3.fromRGB(30,30,30)
+        saveInput.Parent = Tabs.CONFIGS
+        
+        local saveBtn = Instance.new("TextButton")
+        saveBtn.Size = UDim2.new(1, -10, 0, 25)
+        saveBtn.Position = UDim2.new(0, 5, 0, 35)
+        saveBtn.Text = L("SaveConfig")
+        saveBtn.Font = Enum.Font.Code
+        saveBtn.TextSize = 12
+        saveBtn.TextColor3 = Color3.new(1,1,1)
+        saveBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+        saveBtn.Parent = Tabs.CONFIGS
+        saveBtn.MouseButton1Click:Connect(function()
+            if saveInput.Text ~= "" then
+                SaveConfig(saveInput.Text)
+                RefreshConfigList()
+                saveInput.Text = ""
+            end
+        end)
+        
+        local resetBtn = CreateButton(Tabs.CONFIGS, "Reset to Default", function()
+            ResetToDefault()
+            RefreshConfigList()
+            UpdateChamsFromConfig()
+            UpdateSky()
+            StartTracerLoop()
+            UpdateKeybindDisplay()
+        end)
+        resetBtn.Position = UDim2.new(0, 5, 0, 290)
+        
+        RefreshConfigList()
+        
+        -- ========== KEYBINDS ==========
+        UIS.InputBegan:Connect(function(input, gp)
+            if gp then return end
+            if input.KeyCode == _G.Config.MenuKey then
+                MenuGui.Enabled = not MenuGui.Enabled
+            elseif input.KeyCode == Enum.KeyCode.T then
+                _G.Config.MiscThirdPerson = not _G.Config.MiscThirdPerson
+                UpdateKeybindDisplay()
+                if _G.Config.MiscThirdPerson then
+                    camYaw = 0
+                    camPitch = 0
+                end
+            elseif input.KeyCode == Enum.KeyCode.Y then
+                _G.Config.MiscAntiAim = not _G.Config.MiscAntiAim
+                UpdateKeybindDisplay()
+            end
+        end)
+        UpdateKeybindDisplay()
+        
+        -- ===== ЗАПУСК SILENT AIM =====
+        task.spawn(function() task.wait(1) SetupSilentAim() end)
+        
+        -- ===== ОСНОВНОЙ ЦИКЛ (ESP каждый кадр) =====
+        RunService.RenderStepped:Connect(function(dt)
+            ScreenCenter = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+            
+            -- ESP игроков (каждый кадр)
+            UpdateESP()
+            
+            -- FOV Circle
+            if _G.Config.ShowFov then
+                if not FOVCircle then
+                    FOVCircle = Drawing.new("Circle")
+                    FOVCircle.Thickness = 1.6
+                    FOVCircle.Filled = false
+                    FOVCircle.NumSides = 60
+                    FOVCircle.Visible = true
+                end
+                FOVCircle.Position = ScreenCenter
+                FOVCircle.Radius = _G.Config.Fov
+                FOVCircle.Color = _G.Config.ESPColor
+            elseif FOVCircle then
+                FOVCircle.Visible = false
+            end
+            
+            -- Weapon Name ESP (в отдельном потоке, но здесь не мешает)
+            -- Обновление WeaponESP происходит в своём потоке, чтобы не грузить RenderStepped
+            
+            UpdateHitboxes()
+            updateThirdPerson()
+            updateAntiAim()
+            
+            if _G.Config.MiscBhop then
+                local char = LocalPlayer.Character
+                if char then
+                    local hum = char:FindFirstChildOfClass("Humanoid")
+                    if hum and hum.FloorMaterial ~= Enum.Material.Air and UIS:IsKeyDown(Enum.KeyCode.Space) then
+                        hum.Jump = true
+                    end
+                end
+            end
+            
+            UpdateWatermarkAndFPS()
+        end)
+        
+        -- Отдельный поток для Weapon Name ESP (чтобы не нагружать RenderStepped)
+        task.spawn(function()
+            while true do
+                if _G.Config.WeaponNameESP then
+                    cam = workspace.CurrentCamera
+                    for _, b in pairs(WeaponESP.Objects) do
+                        pcall(b.Update, b)
+                    end
+                end
+                wait(0.05) -- можно чаще, но не каждый кадр
+            end
+        end)
+        
+        RunService.Heartbeat:Connect(function()
+            if _G.Config.InfiniteJump and UIS:IsKeyDown(Enum.KeyCode.Space) and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+                LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+        
+        -- Запуск фич
+        UpdateSky()
+        StartTracerLoop()
+        ToggleBoost()
+        ToggleEarlyRun()
+        ToggleWallbang()
+        ToggleFlashbang()
+        ToggleSmokeRemover()
+        
+        print("Loaded: Full script with all features")
     end)
-
-    if not success then
-        LocalPlayer:Kick("This isnt a ban. is just a kick from script. the hook is wrong. if you got this erro. pls report")
-    end
-end
-
--- ESP Functions
-local function IsEnemy(plr)
-    if plr == LocalPlayer then return false end
-    local myChar = LocalPlayer.Character
-    local theirChar = plr.Character
-    if not myChar or not theirChar then return false end
-    return myChar.Parent.Name ~= theirChar.Parent.Name
-end
-
-local function CreateBox(plr)
-    if Boxes[plr] then return end
-    local box = Drawing.new("Square")
-    box.Thickness = ESPSettings.Thickness
-    box.Filled = false
-    box.Color = ESPSettings.BoxColor
-    box.Transparency = 1
-    box.Visible = false
-    Boxes[plr] = box
-end
-
-local function RemoveBox(plr)
-    if Boxes[plr] then
-        Boxes[plr]:Remove()
-        Boxes[plr] = nil
-    end
-end
-
--- Initialize Silent Aim
-SetupSilentAim()
-
--- Connect ESP player events
-Players.PlayerAdded:Connect(CreateBox)
-Players.PlayerRemoving:Connect(RemoveBox)
-
-for _, plr in Players:GetPlayers() do
-    if plr ~= LocalPlayer then
-        CreateBox(plr)
-    end
-end
-
--- Main RenderStepped loop (handles both FOV circle and ESP)
-RunService.RenderStepped:Connect(function()
-    -- Update FOV circle
-    if CombatSettings.ShowFOV then
-        if not FOVCircle then
-            updateFOVCircle()
-        else
-            FOVCircle.Position = UserInputService:GetMouseLocation()
-        end
-    elseif FOVCircle then
-        FOVCircle.Visible = false
-        FOVCircle:Remove()
-        FOVCircle = nil
-    end
-
-    -- Update ESP boxes
-    for plr, box in pairs(Boxes) do
-        local char = plr.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Head") then
-            box.Visible = false
-            continue
-        end
-
-        if not IsEnemy(plr) then
-            box.Visible = false
-            continue
-        end
-
-        local hrp = char.HumanoidRootPart
-        local head = char.Head
-
-        local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.6, 0))
-        local rootPos = Camera:WorldToViewportPoint(hrp.Position)
-        local legPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3.5, 0))
-
-        if rootPos.Z < 0 then
-            box.Visible = false
-            continue
-        end
-
-        local height = math.abs(headPos.Y - legPos.Y)
-        local width = height * 0.55
-
-        box.Size = Vector2.new(width, height)
-        box.Position = Vector2.new(rootPos.X - width/2, rootPos.Y - height/2)
-        box.Visible = true
-    end
 end)
-
-print("Loaded: Silent Aim + ESP")
